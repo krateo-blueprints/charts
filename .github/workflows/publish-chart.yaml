@@ -41,7 +41,7 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
       SRC: ${{ inputs.source_repo }}
       CHANNEL: ${{ inputs.channel }}
-      RELEASES_BASE: https://github.com/braghettos/charts/releases/download
+      RELEASES_BASE: https://github.com/${{ github.repository }}/releases/download
     steps:
       - name: Validate channel
         run: |
@@ -103,16 +103,16 @@ jobs:
           for tgz in dist/*.tgz; do
             base="$(basename "$tgz" .tgz)"
             gh release create "$base" "$tgz" \
-              --repo braghettos/charts \
+              --repo ${{ github.repository }} \
               --title "$base" \
               --notes "from ${SRC}@${{ inputs.git_tag }}" \
-            || gh release upload "$base" "$tgz" --repo braghettos/charts --clobber
+            || gh release upload "$base" "$tgz" --repo ${{ github.repository }} --clobber
           done
 
       - name: Clone gh-pages
         run: |
           git clone --branch gh-pages --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/braghettos/charts" gh-pages
+            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" gh-pages
 
       - name: Collision guard + merge index (per channel)
         run: |
@@ -123,7 +123,10 @@ jobs:
           for tgz in dist/*.tgz; do
             base="$(basename "$tgz" .tgz)"
             name="$(tar -xzO -f "$tgz" '*/Chart.yaml' | yq '.name')"
-            own="$(yq ".entries.\"${name}\"[0].annotations.\"braghettos.io/source-repo\" // \"\"" "$IDX")"
+            # Dual-read during the org migration: prefer the org-neutral key, fall back to the
+                # legacy one. NOTE: no chart currently sets either, so this guard never fires --
+                # tracked separately; the fix belongs in the source charts, not here.
+                own="$(yq ".entries.\"${name}\"[0].annotations.\"krateo.io/source-repo\" // .entries.\"${name}\"[0].annotations.\"braghettos.io/source-repo\" // \"\"" "$IDX")"
             if [ -n "$own" ] && [ "$own" != "$SRC" ]; then
               echo "::error::collision in ${CHANNEL}: chart '${name}' is owned by '${own}', refusing to overwrite from '${SRC}'"
               exit 1
@@ -152,6 +155,6 @@ jobs:
             echo "no index changes"
             exit 0
           fi
-          git -c user.name=charts-ci -c user.email=ci@braghettos.github.io commit \
+          git -c user.name=charts-ci -c user.email=ci@krateo.io commit \
             -m "publish ${SRC}@${{ inputs.git_tag }} -> ${CHANNEL}"
           git push

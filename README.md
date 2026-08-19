@@ -1,15 +1,15 @@
-# braghettos/charts — Krateo Helm registry (GitHub Pages)
+# krateo-blueprints/charts — Krateo Helm registry (GitHub Pages)
 
-Classic Helm registry for all braghettos Krateo charts, served from GitHub Pages
-with **two channels** under one site. OCI (`oci://ghcr.io/braghettos/charts/...`)
+Classic Helm registry for all Krateo charts, served from GitHub Pages
+with **two channels** under one site. OCI (`oci://ghcr.io/krateo-blueprints/charts/...`)
 remains the source of truth; this registry republishes the same chart bytes.
 
 ## Channels
 
 | Channel | Add it with | Contents |
 |---|---|---|
-| **blueprints** | `helm repo add braghettos-blueprints https://braghettos.github.io/charts/blueprints` | User-installable Krateo marketplace blueprints (`Chart.yaml` + `values.schema.json` + `compositiondefinition.yaml` + marketplace metadata). The Krateo marketplace registers this channel. |
-| **operators** | `helm repo add braghettos-operators https://braghettos.github.io/charts/operators` | Operator/KOG install charts, CRD/helper/target subcharts, plain dependency/app charts. Installable via helm; not rendered as marketplace tiles. |
+| **blueprints** | `helm repo add krateo-blueprints https://krateo-blueprints.github.io/charts/blueprints` | User-installable Krateo marketplace blueprints (`Chart.yaml` + `values.schema.json` + `compositiondefinition.yaml` + marketplace metadata). The Krateo marketplace registers this channel. |
+| **operators** | `helm repo add krateo-operators https://krateo-blueprints.github.io/charts/operators` | Operator/KOG install charts, CRD/helper/target subcharts, plain dependency/app charts. Installable via helm; not rendered as marketplace tiles. |
 
 Both indices' `urls:` dereference to the shared GitHub **Releases** blob store of this repo.
 
@@ -33,7 +33,7 @@ icons), then call the reusable publisher once per channel:
 ```yaml
   publish-classic:
     needs: release            # the existing OCI job; it uploads dist/*.tgz as artifact "charts-dist"
-    uses: braghettos/charts/.github/workflows/publish-chart.yaml@main
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@main
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ github.ref_name }}
@@ -66,8 +66,8 @@ no org-level secrets — set it per repo):
 ```bash
 # create the PAT in the UI: https://github.com/settings/tokens/new?scopes=repo
 PAT=ghp_xxx   # the classic repo-scope token
-for r in $(gh repo list braghettos --limit 300 --json name --jq '.[].name'); do
-  gh secret set CHARTS_PUBLISH_TOKEN --repo "braghettos/$r" --body "$PAT"
+for r in $(gh repo list krateo-blueprints --limit 300 --json name --jq '.[].name'); do
+  gh secret set CHARTS_PUBLISH_TOKEN --repo "krateo-blueprints/$r" --body "$PAT"
 done
 ```
 
@@ -81,7 +81,7 @@ done
   `raw.githubusercontent.com` URL). Never a `github.com/.../blob/...` URL — it serves
   HTML and renders blank.
 - **Names** are unique *per channel*. Every chart is stamped with
-  `annotations.braghettos.io/source-repo`; the publisher refuses to overwrite a name
+  `annotations.krateo.io/source-repo`; the publisher refuses to overwrite a name
   already owned by a different source repo (loud CI failure instead of silent overwrite).
 - **OCI stays the source of truth.** This registry republishes the *same bytes* the
   OCI job already produced.
