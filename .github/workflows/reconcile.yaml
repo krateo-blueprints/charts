@@ -31,8 +31,8 @@ jobs:
 
       - name: Rebuild both indexes from committed .tgz
         run: |
-          helm repo index blueprints --url https://braghettos.github.io/charts/blueprints
-          helm repo index operators  --url https://braghettos.github.io/charts/operators
+          helm repo index blueprints --url https://${{ github.repository_owner }}.github.io/charts/blueprints
+          helm repo index operators  --url https://${{ github.repository_owner }}.github.io/charts/operators
 
       - name: Commit if changed
         run: |
@@ -41,5 +41,5 @@ jobs:
             echo "indexes already in sync"
             exit 0
           fi
-          git -c user.name=charts-ci -c user.email=ci@braghettos.github.io commit -m "reindex from committed charts"
+          git -c user.name=charts-ci -c user.email=ci@krateo.io commit -m "reindex from committed charts"
           git push
