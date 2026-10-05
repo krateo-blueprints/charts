@@ -75,9 +75,13 @@ jobs:
         if: ${{ inputs.channel == 'blueprints' }}
         run: |
           set -euo pipefail
+          # GNU tar (the runner's) matches a member pattern literally unless told --wildcards, so a
+          # bare '*/Chart.yaml' is "Not found in archive" and, under pipefail, fails the step for
+          # every chart. --no-wildcards-match-slash keeps '*' inside one path segment: the chart's
+          # own Chart.yaml, not those of its vendored charts/<dep>/ as well.
           fail=0
           for tgz in dist/*.tgz; do
-            name="$(tar -xzO -f "$tgz" '*/Chart.yaml' | yq '.name')"
+            name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
             if ! tar tzf "$tgz" | grep -q '/values\.schema\.json$'; then
               echo "::error::$name: no values.schema.json — promote to a blueprint first, or publish to the operators channel"
               fail=1
@@ -86,7 +90,7 @@ jobs:
               echo "::error::$name: no compositiondefinition.yaml"
               fail=1
             fi
-            icon="$(tar -xzO -f "$tgz" '*/Chart.yaml' | yq -r '.icon // ""')"
+            icon="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq -r '.icon // ""')"
             case "$icon" in
               https://*)
                 : ;;
@@ -122,10 +126,10 @@ jobs:
           [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
           for tgz in dist/*.tgz; do
             base="$(basename "$tgz" .tgz)"
-            name="$(tar -xzO -f "$tgz" '*/Chart.yaml' | yq '.name')"
+            name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
             # Dual-read during the org migration: prefer the org-neutral key, fall back to the
-                # legacy one. NOTE: no chart currently sets either, so this guard never fires --
-                # tracked separately; the fix belongs in the source charts, not here.
+                # legacy one. A builder-scaffold release stamps krateo.io/source-repo; charts
+                # published any other way set neither, and for those this guard never fires.
                 own="$(yq ".entries.\"${name}\"[0].annotations.\"krateo.io/source-repo\" // .entries.\"${name}\"[0].annotations.\"braghettos.io/source-repo\" // \"\"" "$IDX")"
             if [ -n "$own" ] && [ "$own" != "$SRC" ]; then
               echo "::error::collision in ${CHANNEL}: chart '${name}' is owned by '${own}', refusing to overwrite from '${SRC}'"
