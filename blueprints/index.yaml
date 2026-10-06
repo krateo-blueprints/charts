@@ -7886,6 +7886,20 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/masakari-0.2.0.tgz
     version: 0.2.0
+  meetup-site:
+  - annotations:
+      krateo.io/source-repo: krateo-blueprints/meetup-site
+    apiVersion: v2
+    created: "2026-10-06T13:06:12.899231153Z"
+    description: Meetup site blueprint with web deployment, feedback form, and GCP
+      VM.
+    digest: 339cde9ff46838f29a62548af6401c22c81116ad84442022c6beff8ea80008b5
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    name: meetup-site
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/meetup-site/releases/download/meetup-site-0.1.0/meetup-site-0.1.0.tgz
+    version: 0.1.0
   memcached:
   - annotations:
       krateo.io/category: application
@@ -8576,4 +8590,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-10-06T11:55:58.993015603Z"
+generated: "2026-10-06T13:06:12.898943642Z"
