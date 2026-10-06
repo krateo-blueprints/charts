@@ -7080,6 +7080,18 @@ entries:
     urls:
     - https://github.com/krateo-blueprints/event-feedback/releases/download/event-feedback-0.1.1/event-feedback-0.1.1.tgz
     version: 0.1.1
+  event-site:
+  - annotations:
+      krateo.io/source-repo: krateo-blueprints/event-site
+    apiVersion: v2
+    created: "2026-10-06T06:40:34.326714341Z"
+    digest: 20674352e2976a90d01bdec3d521680405e08575f24407d2d38a50927109bed1
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    name: event-site
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/event-site/releases/download/event-site-0.1.0/event-site-0.1.0.tgz
+    version: 0.1.0
   fetch-mcp-server:
   - annotations:
       krateo.io/category: generator
@@ -8564,4 +8576,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-10-06T05:42:29.775428213Z"
+generated: "2026-10-06T06:40:34.326510554Z"
