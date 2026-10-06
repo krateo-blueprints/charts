@@ -7064,6 +7064,22 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/designate-0.2.0.tgz
     version: 0.2.0
+  event-feedback:
+  - annotations:
+      controller.builders.krateo.io/api-group: eventfeedback.example.io
+      controller.builders.krateo.io/base-url: https://api.typeform.com
+      controller.builders.krateo.io/source-spec-version: "1.0"
+      krateo.io/source-repo: krateo-blueprints/event-feedback
+    apiVersion: v2
+    created: "2026-10-06T05:42:29.775679476Z"
+    description: Krateo controller for Typeform Create API (forms), served in eventfeedback.example.io.
+    digest: 5f6dfa83f1ff2fa9a97a4104da980a5aee5de7d5efdf41e43de1aafa09076d6b
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    name: event-feedback
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/event-feedback/releases/download/event-feedback-0.1.1/event-feedback-0.1.1.tgz
+    version: 0.1.1
   fetch-mcp-server:
   - annotations:
       krateo.io/category: generator
@@ -8548,4 +8564,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-10-06T04:35:04.158462776Z"
+generated: "2026-10-06T05:42:29.775428213Z"
