@@ -7084,8 +7084,8 @@ entries:
   - annotations:
       krateo.io/source-repo: krateo-blueprints/event-site
     apiVersion: v2
-    created: "2026-10-06T17:57:33.00753256Z"
-    digest: 47e0f873434a4be94329b6ea33ce8763371378f336cba34525062da9890c6a27
+    created: "2026-10-06T18:49:24.529718981Z"
+    digest: 0d87e91b97ea00104cc5428f68b992169fb9c6ce478f9bb58863da8f255d27b5
     icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
     name: event-site
     type: application
@@ -8616,4 +8616,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-10-06T17:58:21.73414465Z"
+generated: "2026-10-06T18:49:24.529359106Z"
