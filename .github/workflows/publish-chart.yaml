@@ -113,10 +113,20 @@ jobs:
             || gh release upload "$base" "$tgz" --repo ${{ github.repository }} --clobber
           done
 
+      # The index lives in ONE place — this repository's gh-pages, which is what
+      # https://krateo-blueprints.github.io/charts/<channel>/index.yaml serves and what the portal's
+      # Marketplace reads. `github.repository` cannot name it: in a REUSABLE workflow that expression is
+      # the CALLER's repository, so a chart repo calling this cloned its own gh-pages and died with
+      # `fatal: Remote branch gh-pages not found in upstream origin` (krateo-blueprints/event-feedback
+      # run 37413276858, 2026-10-06). There is no context for "the repo this workflow lives in", so the
+      # index repository is named. The .tgz upload above deliberately stays on the caller: the release
+      # asset belongs with the release that produced it, and RELEASES_BASE points the index entry there.
       - name: Clone gh-pages
+        env:
+          INDEX_REPO: krateo-blueprints/charts
         run: |
           git clone --branch gh-pages --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}" gh-pages
+            "https://x-access-token:${GH_TOKEN}@github.com/${INDEX_REPO}" gh-pages
 
       - name: Collision guard + merge index (per channel)
         run: |
