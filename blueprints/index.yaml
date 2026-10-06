@@ -1,5 +1,21 @@
 apiVersion: v1
 entries:
+  acme-feedback:
+  - annotations:
+      controller.builders.krateo.io/api-group: acmefeedback.example.io
+      controller.builders.krateo.io/base-url: https://api.typeform.com
+      controller.builders.krateo.io/source-spec-version: "1.0"
+      krateo.io/source-repo: krateo-blueprints/acme-feedback
+    apiVersion: v2
+    created: "2026-10-06T04:35:04.158732159Z"
+    description: Krateo controller for Typeform Create API (forms), served in acmefeedback.example.io.
+    digest: b93549f06b3808648d58598cda2abe561edc7d39b5e2e623165f557a2588136b
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    name: acme-feedback
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/acme-feedback/releases/download/acme-feedback-0.1.1/acme-feedback-0.1.1.tgz
+    version: 0.1.1
   aodh:
   - annotations:
       krateo.io/category: observability
@@ -8532,4 +8548,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-08-19T04:26:00.017284882Z"
+generated: "2026-10-06T04:35:04.158462776Z"
