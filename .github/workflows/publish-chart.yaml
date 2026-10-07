@@ -81,16 +81,26 @@ jobs:
           # own Chart.yaml, not those of its vendored charts/<dep>/ as well.
           fail=0
           for tgz in dist/*.tgz; do
-            name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
-            if ! tar tzf "$tgz" | grep -q '/values\.schema\.json$'; then
+            # Read each archive ONCE, then match with a here-string. Never `tar ... | grep -q`: grep -q
+            # exits on its FIRST match, tar is then killed by SIGPIPE (141), and under `set -o pipefail`
+            # the pipeline status BECOMES 141 -- so the file being present made the test FAIL. Whether
+            # tar was still writing when grep exited depended on how much listing remained, so it only
+            # bit the LARGEST charts: gcp-monitoring-dashboard, gcp-dlp-deidentifytemplate,
+            # gcp-compute-urlmap and five more were rejected for "no values.schema.json" while carrying
+            # it, in a run where 196 smaller charts passed. The same SIGPIPE truncated the `| yq` reads,
+            # which is why one chart's name printed empty.
+            members="$(tar tzf "$tgz")"
+            chart_yaml="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml')"
+            name="$(yq '.name' <<< "$chart_yaml")"
+            if ! grep -q '/values\.schema\.json$' <<< "$members"; then
               echo "::error::$name: no values.schema.json — promote to a blueprint first, or publish to the operators channel"
               fail=1
             fi
-            if ! tar tzf "$tgz" | grep -qE '/compositiondefinition\.ya?ml$'; then
+            if ! grep -qE '/compositiondefinition\.ya?ml$' <<< "$members"; then
               echo "::error::$name: no compositiondefinition.yaml"
               fail=1
             fi
-            icon="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq -r '.icon // ""')"
+            icon="$(yq -r '.icon // ""' <<< "$chart_yaml")"
             case "$icon" in
               https://*)
                 : ;;
