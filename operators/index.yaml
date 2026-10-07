@@ -1163,6 +1163,22 @@ entries:
       krateoSupportedVersion: 2.7.0
     apiVersion: v2
     appVersion: 1.99.0
+    created: "2026-10-07T19:15:06.175342412Z"
+    description: The Google Config Connector operator, for provisioning Google Cloud
+      resources from Krateo Compositions.
+    digest: 0357a34f01e4ee73f642e05d996976020c4c8ad8d3478915a61c19d65faa705f
+    home: https://krateo.io
+    name: krateo-gcp-configconnector
+    sources:
+    - https://github.com/krateo-blueprints/krateo-gcp-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/krateo-gcp-blueprint/releases/download/krateo-gcp-configconnector-0.1.4/krateo-gcp-configconnector-0.1.4.tgz
+    version: 0.1.4
+  - annotations:
+      krateoSupportedVersion: 2.7.0
+    apiVersion: v2
+    appVersion: 1.99.0
     created: "2026-10-07T18:48:55.505175705Z"
     description: The Google Config Connector operator, for provisioning Google Cloud
       resources from Krateo Compositions.
@@ -1176,6 +1192,21 @@ entries:
     - https://github.com/krateo-blueprints/krateo-gcp-blueprint/releases/download/krateo-gcp-configconnector-0.1.3/krateo-gcp-configconnector-0.1.3.tgz
     version: 0.1.3
   krateo-gcp-configconnector-crds:
+  - annotations:
+      krateoSupportedVersion: 2.7.0
+    apiVersion: v2
+    appVersion: 1.99.0
+    created: "2026-10-07T19:15:06.232367634Z"
+    description: CRDs for Google Config Connector — ConfigConnector and ConfigConnectorContext.
+    digest: 501bca55e7f436448230c0a758e936033ecf69c50ce93712bad0ce440dec3255
+    home: https://krateo.io
+    name: krateo-gcp-configconnector-crds
+    sources:
+    - https://github.com/krateo-blueprints/krateo-gcp-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/krateo-gcp-blueprint/releases/download/krateo-gcp-configconnector-crds-0.1.4/krateo-gcp-configconnector-crds-0.1.4.tgz
+    version: 0.1.4
   - annotations:
       krateoSupportedVersion: 2.7.0
     apiVersion: v2
@@ -2067,4 +2098,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-10-07T18:48:55.573122823Z"
+generated: "2026-10-07T19:15:06.232092886Z"
