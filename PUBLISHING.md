@@ -137,6 +137,14 @@ No release reported any of this.
    `CHARTS_PUBLISH_TOKEN || RELEASE_FEED_TOKEN` validates a token the publish no longer sends, and
    nothing fails to warn you.
 
+   The publisher also refuses a token containing whitespace or a control character, usually a
+   trailing newline from piping into `gh secret set`. Such a token passes the API, which trims it,
+   then breaks git. It never puts the token in a URL; git authenticates through `gh`'s credential
+   helper. Checking before the push is a mitigation, not a guarantee: the publisher can still fail
+   after a caller's GHCR push. When it does, re-run the failed publisher job once the cause is
+   fixed. It is safe to repeat: the store re-uploads its own version, the index merge keeps existing
+   entries, and an unchanged index is not committed.
+
 8. **The release isn't done until the Marketplace can install it.** The publisher reads the served
    `index.yaml` until every chart it published is listed at its version, then installs each one
    anonymously with `helm pull --repo`, the path the Marketplace uses. If either check fails, the
