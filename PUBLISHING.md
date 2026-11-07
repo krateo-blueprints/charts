@@ -27,6 +27,10 @@ No release reported any of this.
      index is not published, because the Marketplace installs from the index and nothing
      re-resolves it against GHCR.
 
+   A chart nobody has cleared to be public is outside this rule: its GHCR package stays private
+   and it is not indexed. Indexing makes a chart public (rule 5), so leaving it out is a decision,
+   and the release says so. krateo-selfservice-blueprint's tenant charts are an example.
+
    GHCR is the source of truth, so what goes to the index is the archive GHCR holds, not a second
    package. A repository that packages its own charts hands the archives it pushed. A repository
    on the shared `krateo-platformops/.github` `release-oci.yaml` pulls each chart back from GHCR
