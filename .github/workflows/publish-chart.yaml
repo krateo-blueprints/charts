@@ -69,8 +69,8 @@ jobs:
             exit 1
           fi
           # A token that carries whitespace or a control character (typically a trailing newline from
-          # `echo ... | gh secret set`) authenticates through the API, which trims it, and then breaks
-          # anything that puts it in a URL. That happened on the first two real releases under 1.0.0
+          # `echo ... | gh secret set`) authenticates through the API and then breaks anything that
+          # builds a URL from it. That happened on the first two real releases under 1.0.0
           # (github-provider-kog 0.7.6, openstack-ironic-operator-kog 0.3.1): the write check passed,
           # and git refused the clone URL. Refuse it here, by name, before anything is written.
           case "${GH_TOKEN}" in
