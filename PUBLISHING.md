@@ -132,7 +132,10 @@ No release reported any of this.
    Making only the publisher call depend on it changes nothing, because that call already runs after
    the push. A check that also reads the packaged archives can't simply be moved in front; split it
    into a token check before the push and an archive check after packaging. The check tests the same
-   secret the caller passes to the publisher. With no valid token, a release produces nothing, not
+   secret the caller passes to the publisher, and its shape as well as its presence: a token with
+   whitespace in it is refused before the push. That's the only check that runs before anything is
+   pushed (openstack-ironic-operator-kog, krateo-arubacloud-provider-kog#54). Never print the
+   value. With no valid token, a release produces nothing, not
    even the GHCR artifact. When dropping an old fallback, change both places: a check left on
    `CHARTS_PUBLISH_TOKEN || RELEASE_FEED_TOKEN` validates a token the publish no longer sends, and
    nothing fails to warn you.
