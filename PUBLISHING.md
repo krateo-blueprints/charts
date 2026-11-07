@@ -63,14 +63,23 @@ No release reported any of this.
    before `helm package`, then check the archive itself: `helm package` succeeds whether the file
    is there or not.
 
-4. **The tag, the chart version and the CompositionDefinition's version are one number.** The
-   release refuses to publish unless all three are equal, and the publisher refuses a
-   CompositionDefinition whose version isn't the chart's. Two ways meet this:
-   - **Placeholder (the default):** the committed files carry `CHART_VERSION`, and the release
-     stamps it from the tag.
-   - **Literal, for repositories whose author tool writes versions:** the Blueprint Composer writes
-     a literal version and merging releases it. Allowed only when the release refuses a tag, a
-     `Chart.yaml` and a CompositionDefinition that differ, as builder-scaffold's does.
+4. **A chart's version and its CompositionDefinition's version are one number, and the release
+   proves it.** The publisher refuses a CompositionDefinition whose version isn't the chart's. A
+   repository's own release must also refuse a chart whose version doesn't match the version it
+   claims to release. Which shape that takes depends on how the repository versions its charts:
+   - **Charts that version together (the default):** the committed files carry `CHART_VERSION`,
+     the release stamps it from the git tag, and tag, chart and CompositionDefinition are all one
+     number.
+   - **Charts that version independently:** this applies where a chart's version is a served API
+     version that other charts depend on. For example, `kubernetes-cluster` names
+     `composition.krateo.io/v0-6-3`, which must equal `baremetal-host` 0.6.3. Stamping every chart
+     from one tag would re-point and stop serving versions for charts that didn't change. These
+     repositories commit literal versions, and their release refuses any chart whose
+     CompositionDefinition, or any dependent apiVersion reference, disagrees with it
+     (openstack-ironic-operator-kog's `check-examples`).
+   - **Charts whose author tool writes the version:** the Blueprint Composer writes a literal
+     version and merging releases it. builder-scaffold's release refuses a tag, a `Chart.yaml` and
+     a CompositionDefinition that differ.
 
    An unguarded literal is how 0.2.0 and 0.1.0 outlived every later release.
 
@@ -82,9 +91,16 @@ No release reported any of this.
      only what may be public.
    - **The caller's release page is never touched.**
 
-6. **One owner per chart name.** The first repository to publish a name owns it. The publisher
-   refuses another repository's version of that name, and refuses to overwrite a stored version,
-   before it writes anything.
+6. **One owner per chart name.** The first repository to publish a name owns it. Before it writes
+   anything, the publisher refuses another repository's version of that name and refuses to
+   overwrite a stored version. It finds the owner from, in order: the entry's `krateo.io/source-repo`
+   annotation; this repository's release notes for that version; the repository named in the
+   entry's URL; the first organisation repository in the entry's `sources`.
+   - **Unresolved names:** 37 names from the 2026 backfill resolve to none of these. The first
+     repository to publish one after this standard claims it, and the release notes record the
+     claim, so it resolves from then on.
+   - **Disputes:** if the wrong repository claims a name, it is fixed here, by hand, in the
+     release notes, never by publishing over it.
 
 7. **One token: the org secret `CHARTS_PUBLISH_TOKEN`.** It is a classic PAT with `repo` scope,
    visible to all repositories, and it has no fallback. `RELEASE_FEED_TOKEN` is for the

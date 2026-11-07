@@ -163,11 +163,13 @@ jobs:
           git clone --branch gh-pages --depth 1 \
             "https://x-access-token:${GH_TOKEN}@github.com/${INDEX_REPO}" gh-pages
 
-      # One owner per chart name (rule 6), decided before anything is written. The owner is the
-      # entry's source-repo annotation if it has one; otherwise the repository recorded in this
-      # repo's release notes for that version; otherwise the repository whose release the entry's
-      # URL points at. Entries from the 2026 backfill have none of these, and the first repository to
-      # publish such a name claims it. braghettos/ is the organisation's former name.
+      # One owner per chart name (rule 6), decided before anything is written. The owner is, in
+      # order: the entry's source-repo annotation; the repository recorded in this repo's release
+      # notes for that version; the repository whose release the entry's URL points at; the first
+      # organisation repository in the entry's `sources`. 37 names from the 2026 backfill resolve to
+      # none of these: the first repository to publish one after the standard claims it, and the
+      # store's release notes record the claim, so it resolves from then on. braghettos/ is the
+      # organisation's former name.
       - name: Ownership guard
         run: |
           set -euo pipefail
@@ -189,6 +191,9 @@ jobs:
                 https://github.com/*/releases/download/*)
                   own="$(cut -d/ -f4,5 <<< "$url")" ;;
               esac
+            fi
+            if [ -z "$own" ]; then
+              own="$(yq -r ".entries.\"${name}\"[0].sources // [] | .[]" "$IDX" | sed -n 's#^https://github.com/\(krateo-blueprints\|braghettos\)/\([^/]*\).*#\1/\2#p' | head -n1)"
             fi
             own="$(norm <<< "$own")"
             if [ -n "$own" ] && [ "$own" != "$me" ]; then
