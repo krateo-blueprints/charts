@@ -41,7 +41,7 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
       SRC: ${{ inputs.source_repo }}
       CHANNEL: ${{ inputs.channel }}
-      RELEASES_BASE: https://github.com/${{ inputs.source_repo }}/releases/download
+      RELEASES_BASE: https://github.com/krateo-blueprints/charts/releases/download
     steps:
       - name: Validate channel
         run: |
@@ -111,28 +111,60 @@ jobs:
           done
           [ "$fail" = "0" ] || exit 1
 
-      # Attach the tarballs to the caller's OWN release for git_tag, never a release per chart.
+      # Store each tarball in THIS repository's Releases, the shared blob store, one release per
+      # chart version, and never in the caller's repository.
       #
-      # This step used to `gh release create <chart>-<version>` in the caller's repository for every
-      # tarball. That made a git tag and a release per chart, and each new release became the
-      # repository's "Latest": krateo-blueprints/event-feedback's `event-feedback-0.1.1` took Latest
-      # from its real release `0.1.1`. For a repository that publishes 37 charts per tag, Latest
-      # would end up on whichever chart was published last, and every `/releases/latest/download/`
-      # link in its docs would 404. The release that produced the charts already exists, or is being
-      # created by the caller's own workflow, so wait for it, then upload to it. Latest is never
-      # changed here.
-      - name: Attach tarballs to the caller's release for this tag
+      # Two placements failed before this one. The first created `<chart>-<version>` releases in the
+      # CALLER, and each became the caller's "Latest" (event-feedback-0.1.1 took Latest from 0.1.1, and
+      # four more repositories had the same). The second, #5, attached the tarballs to the caller's own
+      # tag release. That kept Latest, but it tied every chart's download to the caller's visibility:
+      # a PRIVATE caller (krateo-blueprints/openstack-ironic-operator) would get an index entry that
+      # anonymous helm cannot fetch, with a green job. This repository is public, so a chart stored here
+      # downloads for everyone, whatever the caller. Callers' release pages are never touched.
+      #
+      # The release notes record which repository published the version. A second repository may not
+      # overwrite a version another one stored; the index collision guard below only fires for charts
+      # that carry a source-repo annotation, and the blob would already be overwritten by then.
+      #
+      # Entries published before this change keep the URLs they were indexed with, and those release
+      # assets must not be deleted.
+      - name: Store tarballs in this repository's Releases (shared blob store)
         env:
+          STORE: krateo-blueprints/charts
           TAG: ${{ inputs.git_tag }}
         run: |
           set -euo pipefail
-          for _ in 1 2 3 4 5 6; do
-            gh release view "$TAG" --repo "$SRC" >/dev/null 2>&1 && break
-            gh release create "$TAG" --repo "$SRC" --verify-tag --title "$TAG" --notes "" >/dev/null 2>&1 && break
-            sleep 10
+          for tgz in dist/*.tgz; do
+            base="$(basename "$tgz" .tgz)"
+            if notes="$(gh release view "$base" --repo "$STORE" --json body --jq .body 2>/dev/null)"; then
+              owner="$(sed -n 's/^from \([^@]*\)@.*/\1/p' <<< "$notes" | head -n1)"
+              if [ -n "$owner" ] && [ "$owner" != "$SRC" ]; then
+                echo "::error::${base} is already stored here by ${owner}; refusing to overwrite it from ${SRC}"
+                exit 1
+              fi
+              gh release upload "$base" "$tgz" --repo "$STORE" --clobber
+            else
+              gh release create "$base" "$tgz" --repo "$STORE" --latest=false \
+                --title "$base" --notes "from ${SRC}@${TAG}"
+            fi
           done
-          gh release view "$TAG" --repo "$SRC" >/dev/null   # no release by now is a real failure
-          gh release upload "$TAG" dist/*.tgz --repo "$SRC" --clobber
+
+      # Presence is not availability. Fetch each stored tarball the way helm and the Marketplace will,
+      # anonymously, before any index entry points at it.
+      - name: Every stored tarball downloads without credentials
+        run: |
+          set -euo pipefail
+          for tgz in dist/*.tgz; do
+            base="$(basename "$tgz" .tgz)"
+            url="${RELEASES_BASE}/${base}/${base}.tgz"
+            ok=""
+            for attempt in 1 2 3 4 5 6; do
+              if curl -fsSL -o /dev/null "$url"; then ok=yes; break; fi
+              sleep $(( attempt * 5 ))
+            done
+            [ -n "$ok" ] || { echo "::error::${url} is not anonymously downloadable"; exit 1; }
+          done
+          echo "all $(find dist -name '*.tgz' | wc -l | tr -d ' ') tarballs download anonymously"
 
       # The index lives in ONE place — this repository's gh-pages, which is what
       # https://krateo-blueprints.github.io/charts/<channel>/index.yaml serves and what the portal's
@@ -140,9 +172,7 @@ jobs:
       # the CALLER's repository, so a chart repo calling this cloned its own gh-pages and died with
       # `fatal: Remote branch gh-pages not found in upstream origin` (krateo-blueprints/event-feedback
       # run 37413276858, 2026-10-06). There is no context for "the repo this workflow lives in", so the
-      # index repository is named. The .tgz upload above deliberately stays on the caller: the release
-      # asset belongs with the release that produced it (the caller's git_tag release), and RELEASES_BASE
-      # points the index entry there.
+      # index repository is named. The tarballs are stored in this same repository's Releases, above.
       - name: Clone gh-pages
         env:
           INDEX_REPO: krateo-blueprints/charts
@@ -157,6 +187,7 @@ jobs:
           mkdir -p "gh-pages/${CHANNEL}"
           [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
           for tgz in dist/*.tgz; do
+            base="$(basename "$tgz" .tgz)"
             name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
             # Dual-read during the org migration: prefer the org-neutral key, fall back to the
                 # legacy one. A builder-scaffold release stamps krateo.io/source-repo; charts
@@ -168,7 +199,7 @@ jobs:
             fi
             tmp="$(mktemp -d)"
             cp "$tgz" "$tmp/"
-            helm repo index "$tmp" --url "${RELEASES_BASE}/${{ inputs.git_tag }}" --merge "$IDX"
+            helm repo index "$tmp" --url "${RELEASES_BASE}/${base}" --merge "$IDX"
             mv "$tmp/index.yaml" "$IDX"
             rm -rf "$tmp"
           done
