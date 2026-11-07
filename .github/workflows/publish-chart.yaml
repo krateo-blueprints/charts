@@ -41,7 +41,7 @@ jobs:
       GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
       SRC: ${{ inputs.source_repo }}
       CHANNEL: ${{ inputs.channel }}
-      RELEASES_BASE: https://github.com/${{ github.repository }}/releases/download
+      RELEASES_BASE: https://github.com/${{ inputs.source_repo }}/releases/download
     steps:
       - name: Validate channel
         run: |
@@ -111,17 +111,28 @@ jobs:
           done
           [ "$fail" = "0" ] || exit 1
 
-      - name: Upload tarballs to the shared Releases blob store
+      # Attach the tarballs to the caller's OWN release for git_tag, never a release per chart.
+      #
+      # This step used to `gh release create <chart>-<version>` in the caller's repository for every
+      # tarball. That made a git tag and a release per chart, and each new release became the
+      # repository's "Latest": krateo-blueprints/event-feedback's `event-feedback-0.1.1` took Latest
+      # from its real release `0.1.1`. For a repository that publishes 37 charts per tag, Latest
+      # would end up on whichever chart was published last, and every `/releases/latest/download/`
+      # link in its docs would 404. The release that produced the charts already exists, or is being
+      # created by the caller's own workflow, so wait for it, then upload to it. Latest is never
+      # changed here.
+      - name: Attach tarballs to the caller's release for this tag
+        env:
+          TAG: ${{ inputs.git_tag }}
         run: |
           set -euo pipefail
-          for tgz in dist/*.tgz; do
-            base="$(basename "$tgz" .tgz)"
-            gh release create "$base" "$tgz" \
-              --repo ${{ github.repository }} \
-              --title "$base" \
-              --notes "from ${SRC}@${{ inputs.git_tag }}" \
-            || gh release upload "$base" "$tgz" --repo ${{ github.repository }} --clobber
+          for _ in 1 2 3 4 5 6; do
+            gh release view "$TAG" --repo "$SRC" >/dev/null 2>&1 && break
+            gh release create "$TAG" --repo "$SRC" --verify-tag --title "$TAG" --notes "" >/dev/null 2>&1 && break
+            sleep 10
           done
+          gh release view "$TAG" --repo "$SRC" >/dev/null   # no release by now is a real failure
+          gh release upload "$TAG" dist/*.tgz --repo "$SRC" --clobber
 
       # The index lives in ONE place — this repository's gh-pages, which is what
       # https://krateo-blueprints.github.io/charts/<channel>/index.yaml serves and what the portal's
@@ -130,7 +141,8 @@ jobs:
       # `fatal: Remote branch gh-pages not found in upstream origin` (krateo-blueprints/event-feedback
       # run 37413276858, 2026-10-06). There is no context for "the repo this workflow lives in", so the
       # index repository is named. The .tgz upload above deliberately stays on the caller: the release
-      # asset belongs with the release that produced it, and RELEASES_BASE points the index entry there.
+      # asset belongs with the release that produced it (the caller's git_tag release), and RELEASES_BASE
+      # points the index entry there.
       - name: Clone gh-pages
         env:
           INDEX_REPO: krateo-blueprints/charts
@@ -145,7 +157,6 @@ jobs:
           mkdir -p "gh-pages/${CHANNEL}"
           [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
           for tgz in dist/*.tgz; do
-            base="$(basename "$tgz" .tgz)"
             name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
             # Dual-read during the org migration: prefer the org-neutral key, fall back to the
                 # legacy one. A builder-scaffold release stamps krateo.io/source-repo; charts
@@ -157,7 +168,7 @@ jobs:
             fi
             tmp="$(mktemp -d)"
             cp "$tgz" "$tmp/"
-            helm repo index "$tmp" --url "${RELEASES_BASE}/${base}" --merge "$IDX"
+            helm repo index "$tmp" --url "${RELEASES_BASE}/${{ inputs.git_tag }}" --merge "$IDX"
             mv "$tmp/index.yaml" "$IDX"
             rm -rf "$tmp"
           done
