@@ -138,6 +138,11 @@ No release reported any of this.
    move.
    - **Releases:** tags here are plain semver with no `v` prefix (the organisation's convention),
      and each release is cut as a tag such as `1.0.0` on `main`.
+   - **Pin the commit, not the tag object.** Release tags are annotated, so `git ls-remote` on
+     `refs/tags/1.0.0` and the GitHub tags page give the tag object's SHA (for `1.0.0`,
+     `54acb674…`), and Actions won't run a workflow pinned to it. Take the commit with
+     `git ls-remote https://github.com/krateo-blueprints/charts 'refs/tags/1.0.0^{}'`. For `1.0.0`
+     that is `a2d63ba50e138b17f678528d6d6be3afef48715a`.
    - **Upgrades:** every caller has `.github/dependabot.yml` with the `github-actions` ecosystem,
      so a new publisher release arrives as a reviewed pull request in each repository rather than
      silently. That is how a fix like #5 or #6 still reaches everyone.
