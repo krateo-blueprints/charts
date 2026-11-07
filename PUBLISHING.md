@@ -27,6 +27,10 @@ No release reported any of this.
      index is not published, because the Marketplace installs from the index and nothing
      re-resolves it against GHCR.
 
+   A chart nobody has cleared to be public is outside this rule: its GHCR package stays private
+   and it is not indexed. Indexing makes a chart public (rule 5), so leaving it out is a decision,
+   and the release says so. krateo-selfservice-blueprint's tenant charts are an example.
+
    GHCR is the source of truth, so what goes to the index is the archive GHCR holds, not a second
    package. A repository that packages its own charts hands the archives it pushed. A repository
    on the shared `krateo-platformops/.github` `release-oci.yaml` pulls each chart back from GHCR
@@ -124,15 +128,31 @@ No release reported any of this.
    visible to all repositories, and it has no fallback. `RELEASE_FEED_TOKEN` is for the
    release-notes feed and is never used for the index. The publisher checks that the token can
    write here before it does anything else, so a dead token fails at the first step with a message
-   that says so.
+   that says so. A caller's own token check gates its GHCR push: the push job depends on the check.
+   Making only the publisher call depend on it changes nothing, because that call already runs after
+   the push. A check that also reads the packaged archives can't simply be moved in front; split it
+   into a token check before the push and an archive check after packaging. The check tests the same
+   secret the caller passes to the publisher, and its shape as well as its presence: a token with
+   whitespace in it is refused before the push. That's the only check that runs before anything is
+   pushed (openstack-ironic-operator-kog, krateo-arubacloud-provider-kog#54). Never print the
+   value. With no valid token, a release produces nothing, not
+   even the GHCR artifact. When dropping an old fallback, change both places: a check left on
+   `CHARTS_PUBLISH_TOKEN || RELEASE_FEED_TOKEN` validates a token the publish no longer sends, and
+   nothing fails to warn you.
 
    The publisher also refuses a token containing whitespace or a control character, usually a
    trailing newline from piping into `gh secret set`. Such a token passes the API, which trims it,
    then breaks git. It never puts the token in a URL; git authenticates through `gh`'s credential
    helper. Checking before the push is a mitigation, not a guarantee: the publisher can still fail
-   after a caller's GHCR push. When it does, re-run the failed publisher job once the cause is
-   fixed. It is safe to repeat: the store re-uploads its own version, the index merge keeps existing
-   entries, and an unchanged index is not committed.
+   after a caller's GHCR push. A half-published version is not lost and needs no new
+   version number. Publishing again is safe: the store re-uploads its own version, the index merge
+   keeps existing entries, and an unchanged index is not committed. How to publish again depends on
+   where the cause was:
+   - **Outside the publisher**, such as the secret: re-run the failed publisher job.
+   - **In the publisher:** re-running the job reuses the old pin, so it fails the same way. Re-pin
+     the caller to the fixed publisher on `main`, then run the release again for the same version:
+     `workflow_dispatch`, or re-push the tag. The GHCR push skips an identical version, and the
+     index then receives it.
 
 8. **The release isn't done until the Marketplace can install it.** The publisher reads the served
    `index.yaml` until every chart it published is listed at its version, then installs each one
@@ -146,6 +166,11 @@ No release reported any of this.
    move.
    - **Releases:** tags here are plain semver with no `v` prefix (the organisation's convention),
      and each release is cut as a tag such as `1.0.0` on `main`.
+   - **Pin the commit, not the tag object.** Release tags are annotated, so `git ls-remote` on
+     `refs/tags/1.0.0` and the GitHub tags page give the tag object's SHA (for `1.0.0`,
+     `54acb674…`), and Actions won't run a workflow pinned to it. Take the commit with
+     `git ls-remote https://github.com/krateo-blueprints/charts 'refs/tags/1.0.0^{}'`. For `1.0.0`
+     that is `a2d63ba50e138b17f678528d6d6be3afef48715a`.
    - **Upgrades:** every caller has `.github/dependabot.yml` with the `github-actions` ecosystem,
      so a new publisher release arrives as a reviewed pull request in each repository rather than
      silently. That is how a fix like #5 or #6 still reaches everyone.
