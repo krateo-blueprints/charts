@@ -124,7 +124,10 @@ No release reported any of this.
    visible to all repositories, and it has no fallback. `RELEASE_FEED_TOKEN` is for the
    release-notes feed and is never used for the index. The publisher checks that the token can
    write here before it does anything else, so a dead token fails at the first step with a message
-   that says so.
+   that says so. A caller's own token check runs before its GHCR push and checks the same secret it
+   passes to the publisher. When dropping an old fallback, change both places: a check left on
+   `CHARTS_PUBLISH_TOKEN || RELEASE_FEED_TOKEN` validates a token the publish no longer sends, and
+   nothing fails to warn you.
 
 8. **The release isn't done until the Marketplace can install it.** The publisher reads the served
    `index.yaml` until every chart it published is listed at its version, then installs each one
