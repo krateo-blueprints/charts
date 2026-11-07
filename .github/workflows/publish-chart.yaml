@@ -36,8 +36,11 @@ on:
         description: "classic PAT with the 'repo' scope (classic tokens have no granular contents:write); passed as CHARTS_PUBLISH_TOKEN by the caller"
         required: true
 
+# One group for every channel: all of them push the same gh-pages branch. A group only orders runs
+# within the CALLER's repository, so callers in different repositories can still overlap. The
+# merge-and-push step below re-clones and retries for that case.
 concurrency:
-  group: charts-index-${{ inputs.channel }}
+  group: krateo-charts-index
   cancel-in-progress: false
 
 jobs:
@@ -280,41 +283,51 @@ jobs:
       # `fatal: Remote branch gh-pages not found in upstream origin` (krateo-blueprints/event-feedback
       # run 37413276858, 2026-10-06). There is no context for "the repo this workflow lives in", so the
       # index repository is named. The tarballs are stored in this same repository's Releases, above.
-      - name: Merge the index (never rebuild it)
+      # Merge into the index and push, from a fresh clone, retrying when another publish landed in
+      # between. Every channel and every caller pushes this one gh-pages branch. acmp's 0.2.58 ran its
+      # blueprints and operators channels in parallel: both cloned before either pushed, and the second
+      # push was refused ("fetch first"), leaving operators unindexed. The index is merged, never
+      # rebuilt, so redoing the merge on the newer index loses nobody's entry.
+      - name: Merge the index and push (never rebuild it; retry on a concurrent publish)
         run: |
           set -euo pipefail
-          IDX="gh-pages/${CHANNEL}/index.yaml"
-          mkdir -p "gh-pages/${CHANNEL}"
-          [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
-          for tgz in dist/*.tgz; do
-            base="$(basename "$tgz" .tgz)"
-            tmp="$(mktemp -d)"
-            cp "$tgz" "$tmp/"
-            helm repo index "$tmp" --url "${RELEASES_BASE}/${base}" --merge "$IDX"
-            mv "$tmp/index.yaml" "$IDX"
-            rm -rf "$tmp"
+          for attempt in 1 2 3 4 5 6; do
+            rm -rf index-clone
+            git clone --quiet --branch gh-pages --depth 1 "https://github.com/krateo-blueprints/charts" index-clone
+            IDX="index-clone/${CHANNEL}/index.yaml"
+            mkdir -p "index-clone/${CHANNEL}"
+            [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
+            for tgz in dist/*.tgz; do
+              base="$(basename "$tgz" .tgz)"
+              tmp="$(mktemp -d)"
+              cp "$tgz" "$tmp/"
+              helm repo index "$tmp" --url "${RELEASES_BASE}/${base}" --merge "$IDX"
+              mv "$tmp/index.yaml" "$IDX"
+              rm -rf "$tmp"
+            done
+            if [ -d dist/icons ]; then
+              mkdir -p index-clone/icons
+              cp -r dist/icons/* index-clone/icons/
+            fi
+            cd index-clone
+            git add "${CHANNEL}/index.yaml"
+            if [ -d icons ]; then git add icons; fi
+            if git diff --cached --quiet; then
+              echo "no index changes: every chart was already indexed"
+              exit 0
+            fi
+            git -c user.name=charts-ci -c user.email=ci@krateo.io commit --quiet \
+              -m "publish ${SRC}@${{ inputs.git_tag }} -> ${CHANNEL}"
+            if git push --quiet; then
+              echo "index pushed on attempt ${attempt}"
+              exit 0
+            fi
+            cd ..
+            echo "::warning::gh-pages moved while publishing (attempt ${attempt}); re-cloning and merging again"
+            sleep $(( attempt * 5 + RANDOM % 10 ))
           done
-
-      - name: Copy icons (shared across channels)
-        run: |
-          if [ -d dist/icons ]; then
-            mkdir -p gh-pages/icons
-            cp -r dist/icons/* gh-pages/icons/ 2>/dev/null || true
-          fi
-
-      - name: Commit and push
-        run: |
-          set -euo pipefail
-          cd gh-pages
-          git add "${CHANNEL}/index.yaml"
-          [ -d icons ] && git add icons || true
-          if git diff --cached --quiet; then
-            echo "no index changes"
-            exit 0
-          fi
-          git -c user.name=charts-ci -c user.email=ci@krateo.io commit \
-            -m "publish ${SRC}@${{ inputs.git_tag }} -> ${CHANNEL}"
-          git push
+          echo "::error::could not push the index after 6 attempts; re-run this job (it is idempotent)"
+          exit 1
 
       # The release isn't done until the Marketplace can install it (rule 8). A pushed commit isn't
       # that: Pages has to rebuild, and a CDN can serve the old index for a while. So read what is
