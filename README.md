@@ -20,7 +20,7 @@ before 2026-11-07 keep their original URLs, so no existing release asset may be 
 - **`gh-pages`** branch (Pages source, `/`): `blueprints/index.yaml` and `operators/index.yaml`, the
   two channel indexes; `icons/`; the 2026 backfill's tarballs; `.nojekyll`.
 - GitHub **Releases** of this repository: the tarball store, one release per `<name>-<version>`.
-- **`main`**: `.github/workflows/publish-chart.yaml`, the reusable publisher. Callers pin `@v1`.
+- **`main`**: `.github/workflows/publish-chart.yaml`, the reusable publisher. Callers pin `@1`.
 
 There is no reindex workflow. The old one rebuilt both indexes from the tarballs on gh-pages only,
 which would have dropped every entry stored anywhere else. Indexes are only ever merged.
@@ -32,7 +32,7 @@ Follow [PUBLISHING.md](PUBLISHING.md). The call is:
 ```yaml
   publish-index:
     needs: release
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@v1
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@1
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ github.ref_name }}

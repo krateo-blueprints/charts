@@ -72,8 +72,11 @@ No release reported any of this.
    anonymously with `helm pull --repo`, the path the Marketplace uses. If either check fails, the
    release fails. Callers don't need their own check.
 
-9. **Callers pin `@v1`.** `v1` is a tag in this repository. It moves only for fixes that change no
-   caller-visible input, output or rule; anything else becomes `v2`.
+9. **Callers pin `@1`.** Tags here are plain semver with no `v` prefix, the organisation's
+   convention. Every publisher release gets an immutable tag such as `1.0.0`. The major tag `1`
+   moves to the newest `1.x.y`, and only for fixes that change no caller-visible input, output or
+   rule. Anything else is `2.0.0`, with `2` as its major tag. Callers pin the major tag, so a fix
+   reaches every repository at once, as #5 and #6 had to.
 
 10. **Released commits passed lint.** The caller's release refuses a commit with no successful lint
     run. That check belongs to the caller's workflow, because only the caller knows its own lint.
@@ -100,7 +103,7 @@ No release reported any of this.
 ```yaml
   publish-index:
     needs: release        # your job that pushed to GHCR and uploaded the .tgz as artifact "charts-dist"
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@v1
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@1
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ github.ref_name }}
