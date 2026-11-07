@@ -33,6 +33,13 @@ No release reported any of this.
    after that workflow runs. That covers a version the workflow skipped because it was already
    published identically: a fresh `helm package` would have new mtimes and different bytes.
 
+   **How the Marketplace picks versions** (Diego, 2026-11-07): the live index leads. For any chart
+   whose newest version lists a `https://github.com/krateo-blueprints/<repo>` URL in `sources:`,
+   the portal shows the live index's versions first, newest first. The catalog snapshot bundled in
+   `krateo-marketplace-catalog` is the fallback: it serves offline and air-gapped installs, and
+   names the live index doesn't have. So a chart without that `sources:` entry never updates in
+   the Marketplace, however often it is published.
+
 2. **The channel follows from the content, not from preference.**
    - **`blueprints`:** a chart with `values.schema.json` and a CompositionDefinition. These are the
      Marketplace's charts.
@@ -60,8 +67,9 @@ No release reported any of this.
    the domain (`openstack`, `dns`, `events`) and the kind (`blueprint`, `controller`). Words true of
    every chart (`krateo`, `helm`, `chart`) make a chip that filters nothing, so leave them out.
 
-   Every chart, in either channel, lists the repository that builds it in `Chart.yaml` `sources:`,
-   as `https://github.com/<owner>/<repo>`, next to any upstream projects. That is
+   Every chart, in every channel, lists the repository that builds it in `Chart.yaml` `sources:`,
+   as `https://github.com/<owner>/<repo>`, next to any upstream projects. That entry is what makes a
+   chart appear and update in the Marketplace (rule 1). That is
    how a pinned chart is traced back to the commit and CI run that built it (the installer's
    `check-pin-ci`).
 
