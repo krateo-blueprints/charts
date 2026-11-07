@@ -55,8 +55,10 @@ No release reported any of this.
      `oci://ghcr.io/krateo-blueprints/charts/<name>` and whose `spec.chart.version` is the
      chart's own version.
 
-   `Chart.yaml` must have an absolute https `icon` and a non-empty `keywords` list, which the
-   Marketplace shows as tags.
+   `Chart.yaml` must have an absolute https `icon` and a non-empty `keywords` list. The
+   Marketplace turns `keywords` into filter chips, so they must be words a user would filter by:
+   the domain (`openstack`, `dns`, `events`) and the kind (`blueprint`, `controller`). Words true of
+   every chart (`krateo`, `helm`, `chart`) make a chip that filters nothing, so leave them out.
 
    Every chart, in either channel, lists the repository that builds it in `Chart.yaml` `sources:`,
    as `https://github.com/<owner>/<repo>`, next to any upstream projects. That is
