@@ -1,9 +1,15 @@
 name: publish-chart
 
-# Reusable publisher. A source repo calls this (workflow_call) once per channel
-# after its OCI release, passing the packaged charts as the "charts-dist" artifact.
-# It uploads the .tgz to this repo's Releases (shared blob store) and merges the
-# entry into the chosen channel's index on gh-pages.
+# The one publisher for every chart in the organisation. PUBLISHING.md is the standard it enforces.
+#
+# A caller pushes its charts to GHCR, uploads the same .tgz as an artifact, and calls this once per
+# channel. In this order, so that nothing is written unless everything can be:
+#   1. the token can write here, or nothing else runs;
+#   2. every chart belongs in this channel and is complete (PUBLISHING.md rules 2 and 3);
+#   3. no other repository owns the name or has stored the version (rule 6);
+#   4. the tarballs are stored in this repository's Releases and download anonymously (rule 5);
+#   5. the index is merged, never rebuilt, and pushed;
+#   6. the served index lists every chart, and `helm pull --repo` installs it anonymously (rule 8).
 
 on:
   workflow_call:
@@ -17,7 +23,7 @@ on:
         type: string
         required: true
       channel:
-        description: "target channel: blueprints or operators"
+        description: "target channel: blueprints, operators or pages (PUBLISHING.md rule 2)"
         type: string
         required: true
       artifact:
@@ -46,12 +52,30 @@ jobs:
       - name: Validate channel
         run: |
           case "$CHANNEL" in
-            blueprints|operators)
+            blueprints|operators|pages)
               : ;;
             *)
-              echo "::error::channel must be 'blueprints' or 'operators', got '$CHANNEL'"
+              echo "::error::channel must be 'blueprints', 'operators' or 'pages', got '$CHANNEL'"
               exit 1 ;;
           esac
+
+      # The org fallback token stopped authenticating and every caller's publish failed with a 401
+      # halfway through, after GHCR already held the version. Ask first.
+      - name: The publish token can write to this repository
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN}" ]; then
+            echo "::error::PUBLISH_TOKEN is empty. Pass secrets.CHARTS_PUBLISH_TOKEN (PUBLISHING.md rule 7)."
+            exit 1
+          fi
+          if ! push="$(gh api repos/krateo-blueprints/charts --jq .permissions.push 2>&1)"; then
+            echo "::error::PUBLISH_TOKEN does not authenticate: ${push}. It is expired, revoked or mistyped."
+            exit 1
+          fi
+          if [ "$push" != "true" ]; then
+            echo "::error::PUBLISH_TOKEN authenticates but cannot write to krateo-blueprints/charts."
+            exit 1
+          fi
 
       - name: Install helm
         uses: azure/setup-helm@v4
@@ -71,8 +95,9 @@ jobs:
             exit 1
           }
 
-      - name: Channel gate (blueprints must be full, renderable blueprints)
-        if: ${{ inputs.channel == 'blueprints' }}
+      # The channel follows from the content (PUBLISHING.md rule 2), and a blueprint archive must
+      # describe itself (rule 3). Checked on the archive, because that is what is installed.
+      - name: Content gate (right channel, complete archive)
         run: |
           set -euo pipefail
           # GNU tar (the runner's) matches a member pattern literally unless told --wildcards, so a
@@ -91,23 +116,93 @@ jobs:
             # which is why one chart's name printed empty.
             members="$(tar tzf "$tgz")"
             chart_yaml="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml')"
-            name="$(yq '.name' <<< "$chart_yaml")"
-            if ! grep -q '/values\.schema\.json$' <<< "$members"; then
-              echo "::error::$name: no values.schema.json — promote to a blueprint first, or publish to the operators channel"
-              fail=1
+            name="$(yq -r '.name' <<< "$chart_yaml")"
+            version="$(yq -r '.version' <<< "$chart_yaml")"
+            if [ "$(basename "$tgz")" != "${name}-${version}.tgz" ]; then
+              echo "::error::$(basename "$tgz"): Chart.yaml says ${name} ${version}"; fail=1; continue
             fi
-            if ! grep -qE '/compositiondefinition\.ya?ml$' <<< "$members"; then
-              echo "::error::$name: no compositiondefinition.yaml"
+            # Rule 3: every chart names its source repository, so a pinned chart can be traced to the
+            # commit and CI run that built it.
+            src_url="https://github.com/${SRC}"
+            yq -e ".sources // [] | .[] | select(. == \"${src_url}\")" <<< "$chart_yaml" >/dev/null 2>&1 || { echo "::error::$name: Chart.yaml sources: must list ${src_url}, the repository that builds it"; fail=1; }
+            has_schema=no; has_cd=no
+            grep -qxF "${name}/values.schema.json" <<< "$members" && has_schema=yes
+            grep -qxF "${name}/compositiondefinition.yaml" <<< "$members" && has_cd=yes
+            kind="$(yq -r '.annotations."krateo.io/kind" // ""' <<< "$chart_yaml")"
+            if [ "$has_schema" = yes ] && [ "$has_cd" = yes ]; then
+              if [ "$kind" = page-set ]; then want_channel=pages; else want_channel=blueprints; fi
+            else
+              want_channel=operators
+            fi
+            if [ "$CHANNEL" != "$want_channel" ]; then
+              echo "::error::$name belongs in ${want_channel}, not ${CHANNEL} (PUBLISHING.md rule 2)"
+              fail=1; continue
+            fi
+            [ "$CHANNEL" = operators ] && continue
+            if [ "$has_cd" = yes ]; then
+              cd_yaml="$(tar -xzO -f "$tgz" "${name}/compositiondefinition.yaml")"
+              cd_url="$(yq -r 'select(.kind == "CompositionDefinition") | .spec.chart.url' <<< "$cd_yaml" | head -n1)"
+              cd_ver="$(yq -r 'select(.kind == "CompositionDefinition") | .spec.chart.version' <<< "$cd_yaml" | head -n1)"
+              want_url="oci://ghcr.io/krateo-blueprints/charts/${name}"
+              [ "$cd_url" = "$want_url" ] || { echo "::error::$name: CompositionDefinition installs '${cd_url}', not ${want_url}"; fail=1; }
+              [ "$cd_ver" = "$version" ] || { echo "::error::$name ${version}: its CompositionDefinition installs version '${cd_ver}'"; fail=1; }
+            else
+              echo "::error::$name: no ${name}/compositiondefinition.yaml in the archive; copy the stamped one into the chart before helm package"
               fail=1
             fi
             icon="$(yq -r '.icon // ""' <<< "$chart_yaml")"
             case "$icon" in
-              https://*)
-                : ;;
-              *)
-                echo "::error::$name: icon must be an absolute https URL, got '$icon'"
-                fail=1 ;;
+              https://*) : ;;
+              *) echo "::error::$name: icon must be an absolute https URL, got '$icon'"; fail=1 ;;
             esac
+            [ "$(yq -r '(.keywords // []) | length' <<< "$chart_yaml")" -gt 0 ] || { echo "::error::$name: Chart.yaml needs keywords, the Marketplace's tags"; fail=1; }
+          done
+          [ "$fail" = "0" ] || exit 1
+
+      - name: Clone gh-pages
+        env:
+          INDEX_REPO: krateo-blueprints/charts
+        run: |
+          git clone --branch gh-pages --depth 1 \
+            "https://x-access-token:${GH_TOKEN}@github.com/${INDEX_REPO}" gh-pages
+
+      # One owner per chart name (rule 6), decided before anything is written. The owner is, in
+      # order: the entry's source-repo annotation; the repository recorded in this repo's release
+      # notes for that version; the repository whose release the entry's URL points at; the first
+      # organisation repository in the entry's `sources`. 37 names from the 2026 backfill resolve to
+      # none of these: the first repository to publish one after the standard claims it, and the
+      # store's release notes record the claim, so it resolves from then on. braghettos/ is the
+      # organisation's former name.
+      - name: Ownership guard
+        run: |
+          set -euo pipefail
+          IDX="gh-pages/${CHANNEL}/index.yaml"
+          [ -f "$IDX" ] || exit 0
+          norm() { sed 's#^braghettos/#krateo-blueprints/#'; }
+          me="$(norm <<< "$SRC")"
+          fail=0
+          for tgz in dist/*.tgz; do
+            name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq -r '.name')"
+            [ "$(yq -r ".entries.\"${name}\" | length" "$IDX")" -gt 0 ] || continue
+            own="$(yq -r ".entries.\"${name}\"[0].annotations.\"krateo.io/source-repo\" // .entries.\"${name}\"[0].annotations.\"braghettos.io/source-repo\" // \"\"" "$IDX")"
+            url="$(yq -r ".entries.\"${name}\"[0].urls[0] // \"\"" "$IDX")"
+            if [ -z "$own" ]; then
+              case "$url" in
+                https://github.com/krateo-blueprints/charts/releases/download/*)
+                  rel="$(cut -d/ -f8 <<< "$url")"
+                  own="$(gh release view "$rel" --repo krateo-blueprints/charts --json body --jq .body 2>/dev/null | sed -n 's/^from \([^@]*\)@.*/\1/p' | head -n1)" ;;
+                https://github.com/*/releases/download/*)
+                  own="$(cut -d/ -f4,5 <<< "$url")" ;;
+              esac
+            fi
+            if [ -z "$own" ]; then
+              own="$(yq -r ".entries.\"${name}\"[0].sources // [] | .[]" "$IDX" | sed -n 's#^https://github.com/\(krateo-blueprints\|braghettos\)/\([^/]*\).*#\1/\2#p' | head -n1)"
+            fi
+            own="$(norm <<< "$own")"
+            if [ -n "$own" ] && [ "$own" != "$me" ]; then
+              echo "::error::${CHANNEL}/${name} is owned by ${own}; refusing ${SRC}'s version"
+              fail=1
+            fi
           done
           [ "$fail" = "0" ] || exit 1
 
@@ -173,14 +268,7 @@ jobs:
       # `fatal: Remote branch gh-pages not found in upstream origin` (krateo-blueprints/event-feedback
       # run 37413276858, 2026-10-06). There is no context for "the repo this workflow lives in", so the
       # index repository is named. The tarballs are stored in this same repository's Releases, above.
-      - name: Clone gh-pages
-        env:
-          INDEX_REPO: krateo-blueprints/charts
-        run: |
-          git clone --branch gh-pages --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/${INDEX_REPO}" gh-pages
-
-      - name: Collision guard + merge index (per channel)
+      - name: Merge the index (never rebuild it)
         run: |
           set -euo pipefail
           IDX="gh-pages/${CHANNEL}/index.yaml"
@@ -188,15 +276,6 @@ jobs:
           [ -f "$IDX" ] || printf 'apiVersion: v1\nentries: {}\n' > "$IDX"
           for tgz in dist/*.tgz; do
             base="$(basename "$tgz" .tgz)"
-            name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq '.name')"
-            # Dual-read during the org migration: prefer the org-neutral key, fall back to the
-                # legacy one. A builder-scaffold release stamps krateo.io/source-repo; charts
-                # published any other way set neither, and for those this guard never fires.
-                own="$(yq ".entries.\"${name}\"[0].annotations.\"krateo.io/source-repo\" // .entries.\"${name}\"[0].annotations.\"braghettos.io/source-repo\" // \"\"" "$IDX")"
-            if [ -n "$own" ] && [ "$own" != "$SRC" ]; then
-              echo "::error::collision in ${CHANNEL}: chart '${name}' is owned by '${own}', refusing to overwrite from '${SRC}'"
-              exit 1
-            fi
             tmp="$(mktemp -d)"
             cp "$tgz" "$tmp/"
             helm repo index "$tmp" --url "${RELEASES_BASE}/${base}" --merge "$IDX"
@@ -224,3 +303,40 @@ jobs:
           git -c user.name=charts-ci -c user.email=ci@krateo.io commit \
             -m "publish ${SRC}@${{ inputs.git_tag }} -> ${CHANNEL}"
           git push
+
+      # The release isn't done until the Marketplace can install it (rule 8). A pushed commit isn't
+      # that: Pages has to rebuild, and a CDN can serve the old index for a while. So read what is
+      # served, then install each chart the way the Marketplace does, anonymously through the repo
+      # URL.
+      - name: The Marketplace can install every chart published
+        env:
+          REPO_URL: https://krateo-blueprints.github.io/charts/${{ inputs.channel }}
+        run: |
+          set -euo pipefail
+          want=()
+          for tgz in dist/*.tgz; do
+            cy="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml')"
+            want+=("$(yq -r '.name' <<< "$cy")=$(yq -r '.version' <<< "$cy")")
+          done
+          missing=()
+          for attempt in $(seq 1 20); do
+            curl -fsSL "${REPO_URL}/index.yaml?nocache=$(date +%s)" -o served.yaml || { sleep 30; continue; }
+            missing=()
+            for nv in "${want[@]}"; do
+              n="${nv%%=*}"; v="${nv#*=}"
+              yq -e ".entries.\"${n}\"[] | select(.version == \"${v}\")" served.yaml >/dev/null 2>&1 || missing+=("$nv")
+            done
+            [ "${#missing[@]}" -eq 0 ] && break
+            echo "attempt ${attempt}: not served yet: ${missing[*]}"
+            sleep 30
+          done
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "::error::the served ${CHANNEL} index still lacks: ${missing[*]}"
+            exit 1
+          fi
+          mkdir -p pulled
+          for nv in "${want[@]}"; do
+            n="${nv%%=*}"; v="${nv#*=}"
+            env -u GH_TOKEN helm pull "$n" --version "$v" --repo "$REPO_URL" --destination pulled
+          done
+          echo "the Marketplace can install all ${#want[@]} chart(s) from ${REPO_URL}"
