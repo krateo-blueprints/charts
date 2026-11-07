@@ -20,11 +20,18 @@ No release reported any of this.
 
 ## The standard
 
-1. **Every chart is published twice, with the same bytes.** Once to GHCR at
-   `oci://ghcr.io/krateo-blueprints/charts/<name>:<version>`, by the caller's release. Once to the
-   helm index here, by `publish-chart.yaml`. A chart that is in GHCR and not in the index is not
-   published, because the Marketplace installs from the index and nothing re-resolves it against
-   GHCR.
+1. **Every chart is packaged once and published twice, with the same bytes.**
+   - **GHCR:** first, at `oci://ghcr.io/krateo-blueprints/charts/<name>:<version>`. Every chart in
+     this organisation publishes to that registry and no other.
+   - **The index here:** second, by `publish-chart.yaml`. A chart that is in GHCR and not in the
+     index is not published, because the Marketplace installs from the index and nothing
+     re-resolves it against GHCR.
+
+   GHCR is the source of truth, so what goes to the index is the archive GHCR holds, not a second
+   package. A repository that packages its own charts hands the archives it pushed. A repository
+   on the shared `krateo-platformops/.github` `release-oci.yaml` pulls each chart back from GHCR
+   after that workflow runs. That covers a version the workflow skipped because it was already
+   published identically: a fresh `helm package` would have new mtimes and different bytes.
 
 2. **The channel follows from the content, not from preference.**
    - **`blueprints`:** a chart with `values.schema.json` and a CompositionDefinition.
@@ -41,13 +48,31 @@ No release reported any of this.
      chart's own version.
 
    `Chart.yaml` must have an absolute https `icon` and a non-empty `keywords` list, which the
-   Marketplace shows as tags. Copy the stamped CompositionDefinition into the chart directory
+   Marketplace shows as tags.
+
+   Every chart, in either channel, lists the repository that builds it in `Chart.yaml` `sources:`,
+   as `https://github.com/<owner>/<repo>`, next to any upstream projects. That is
+   how a pinned chart is traced back to the commit and CI run that built it (the installer's
+   `check-pin-ci`).
+
+   A chart meant to be pinned as an installer component must also meet the installer's component
+   contract in krateo-platformops/installer. For example, a closed `values.schema.json` declares
+   `global`, which is injected at install. That contract is the installer's to version, so it is
+   referenced here and not copied. A publish can't catch a missing `global`: `helm lint` validates
+   `values.yaml`, which has none. Copy the stamped CompositionDefinition into the chart directory
    before `helm package`, then check the archive itself: `helm package` succeeds whether the file
    is there or not.
 
-4. **Versions come from the tag.** The committed `Chart.yaml` and CompositionDefinition carry the
-   `CHART_VERSION` placeholder, and the release stamps it from the git tag. Never commit a literal
-   version, because literals are how 0.2.0 and 0.1.0 outlived every later release.
+4. **The tag, the chart version and the CompositionDefinition's version are one number.** The
+   release refuses to publish unless all three are equal, and the publisher refuses a
+   CompositionDefinition whose version isn't the chart's. Two ways meet this:
+   - **Placeholder (the default):** the committed files carry `CHART_VERSION`, and the release
+     stamps it from the tag.
+   - **Literal, for repositories whose author tool writes versions:** the Blueprint Composer writes
+     a literal version and merging releases it. Allowed only when the release refuses a tag, a
+     `Chart.yaml` and a CompositionDefinition that differ, as builder-scaffold's does.
+
+   An unguarded literal is how 0.2.0 and 0.1.0 outlived every later release.
 
 5. **Tarballs are stored in this repository's Releases.** There is one release per
    `<name>-<version>`, created with `--latest=false`, and its notes record the publishing
@@ -81,11 +106,24 @@ No release reported any of this.
 10. **Released commits passed lint.** The caller's release refuses a commit with no successful lint
     run. That check belongs to the caller's workflow, because only the caller knows its own lint.
 
-11. **A blueprint declares who can see it.** The portal's Blueprints page shows a user only the
-    CompositionDefinitions in namespaces where they may `list compositiondefinitions.core.krateo.io`
-    (krateo-platformops/portal#261). Each blueprint ships a Role and RoleBinding granting that in
-    its namespace to the groups it is for. The default groups are `admins` and `devs`, which are
-    the portal's `blueprints-page.readerGroups`.
+11. **A blueprint declares who can see it, and whoever registers it grants that.** The portal's
+    Blueprints page shows a user only the CompositionDefinitions in namespaces where they may
+    `list compositiondefinitions.core.krateo.io` (krateo-platformops/portal#261). The grant belongs
+    in the CompositionDefinition's namespace, which only the registrar knows. The blueprint's own
+    chart renders in each instance's namespace, after an instance exists, so it can't make the
+    grant. A blueprint declares its reader groups (default `admins` and `devs`, the portal's
+    `blueprints-page.readerGroups`), and the grant comes from:
+    - **the installer**, for catalog blueprints, through the component's `readerGroups`, which
+      renders a Role and RoleBinding in the definition's namespace;
+    - **a manifest published beside the CompositionDefinition**, for manual registration.
+      krateo-openstack-blueprint's `portal-visibility-rbac.yaml` is an example.
+
+## Scope
+
+This standard covers every repository in the krateo-blueprints organisation. builder-scaffold also
+seeds repositories in other owners' accounts and on self-hosted SCMs. Those have no
+`CHARTS_PUBLISH_TOKEN` and publish to their own registry, so the scaffold runs the index publish
+only when `github.repository_owner` is `krateo-blueprints`.
 
 ## What is never done
 

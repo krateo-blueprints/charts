@@ -121,6 +121,10 @@ jobs:
             if [ "$(basename "$tgz")" != "${name}-${version}.tgz" ]; then
               echo "::error::$(basename "$tgz"): Chart.yaml says ${name} ${version}"; fail=1; continue
             fi
+            # Rule 3: every chart names its source repository, so a pinned chart can be traced to the
+            # commit and CI run that built it.
+            src_url="https://github.com/${SRC}"
+            yq -e ".sources // [] | .[] | select(. == \"${src_url}\")" <<< "$chart_yaml" >/dev/null 2>&1 || { echo "::error::$name: Chart.yaml sources: must list ${src_url}, the repository that builds it"; fail=1; }
             has_schema=no; has_cd=no
             grep -qxF "${name}/values.schema.json" <<< "$members" && has_schema=yes
             grep -qxF "${name}/compositiondefinition.yaml" <<< "$members" && has_cd=yes
