@@ -23,7 +23,7 @@ on:
         type: string
         required: true
       channel:
-        description: "target channel: blueprints or operators"
+        description: "target channel: blueprints, operators or pages (PUBLISHING.md rule 2)"
         type: string
         required: true
       artifact:
@@ -52,10 +52,10 @@ jobs:
       - name: Validate channel
         run: |
           case "$CHANNEL" in
-            blueprints|operators)
+            blueprints|operators|pages)
               : ;;
             *)
-              echo "::error::channel must be 'blueprints' or 'operators', got '$CHANNEL'"
+              echo "::error::channel must be 'blueprints', 'operators' or 'pages', got '$CHANNEL'"
               exit 1 ;;
           esac
 
@@ -128,14 +128,17 @@ jobs:
             has_schema=no; has_cd=no
             grep -qxF "${name}/values.schema.json" <<< "$members" && has_schema=yes
             grep -qxF "${name}/compositiondefinition.yaml" <<< "$members" && has_cd=yes
-            if [ "$CHANNEL" = operators ]; then
-              if [ "$has_schema" = yes ] && [ "$has_cd" = yes ]; then
-                echo "::error::$name is a blueprint (schema and CompositionDefinition); publish it to blueprints"
-                fail=1
-              fi
-              continue
+            kind="$(yq -r '.annotations."krateo.io/kind" // ""' <<< "$chart_yaml")"
+            if [ "$has_schema" = yes ] && [ "$has_cd" = yes ]; then
+              if [ "$kind" = page-set ]; then want_channel=pages; else want_channel=blueprints; fi
+            else
+              want_channel=operators
             fi
-            [ "$has_schema" = yes ] || { echo "::error::$name: no ${name}/values.schema.json; publish it to operators, or add one"; fail=1; }
+            if [ "$CHANNEL" != "$want_channel" ]; then
+              echo "::error::$name belongs in ${want_channel}, not ${CHANNEL} (PUBLISHING.md rule 2)"
+              fail=1; continue
+            fi
+            [ "$CHANNEL" = operators ] && continue
             if [ "$has_cd" = yes ]; then
               cd_yaml="$(tar -xzO -f "$tgz" "${name}/compositiondefinition.yaml")"
               cd_url="$(yq -r 'select(.kind == "CompositionDefinition") | .spec.chart.url' <<< "$cd_yaml" | head -n1)"

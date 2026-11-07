@@ -34,14 +34,22 @@ No release reported any of this.
    published identically: a fresh `helm package` would have new mtimes and different bytes.
 
 2. **The channel follows from the content, not from preference.**
-   - **`blueprints`:** a chart with `values.schema.json` and a CompositionDefinition.
+   - **`blueprints`:** a chart with `values.schema.json` and a CompositionDefinition. These are the
+     Marketplace's charts.
+   - **`pages`:** a chart with `values.schema.json` and a CompositionDefinition whose `Chart.yaml`
+     declares `annotations: krateo.io/kind: page-set`, meaning a set of portal pages installed by
+     the Composer. It is published and installable like a blueprint, but the Marketplace doesn't
+     list it. Diego decided on 2026-11-07 that page sets stay off the Marketplace.
    - **`operators`:** every other chart, such as operators, KOGs without a CompositionDefinition,
      and helper or CRD charts.
 
-   The publisher refuses a non-blueprint in `blueprints` and a blueprint in `operators`, so the
-   same chart can never be in the wrong one.
+   The publisher refuses a chart sent to any channel other than its own. The caller passes one
+   `channel:` per call, and the publisher's refusal arrives after the GHCR push, so the caller's
+   release must check each chart's channel itself, before pushing anything. A repository with
+   charts of more than one kind uploads one artifact per channel and calls the publisher once per
+   channel.
 
-3. **A blueprint archive is self-describing.** The archive must contain, at its root:
+3. **A blueprint or page-set archive is self-describing.** The archive must contain, at its root:
    - `values.schema.json`;
    - `compositiondefinition.yaml`, whose `spec.chart.url` is
      `oci://ghcr.io/krateo-blueprints/charts/<name>` and whose `spec.chart.version` is the

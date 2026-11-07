@@ -1,7 +1,7 @@
 # krateo-blueprints/charts — Krateo Helm registry (GitHub Pages)
 
 Classic Helm registry for all Krateo charts, served from GitHub Pages
-with **two channels** under one site. OCI (`oci://ghcr.io/krateo-blueprints/charts/...`)
+with **three channels** under one site. OCI (`oci://ghcr.io/krateo-blueprints/charts/...`)
 remains the source of truth; this registry republishes the same chart bytes.
 
 ## Channels
@@ -9,6 +9,7 @@ remains the source of truth; this registry republishes the same chart bytes.
 | Channel | Add it with | Contents |
 |---|---|---|
 | **blueprints** | `helm repo add krateo-blueprints https://krateo-blueprints.github.io/charts/blueprints` | User-installable Krateo marketplace blueprints (`Chart.yaml` + `values.schema.json` + `compositiondefinition.yaml` + marketplace metadata). The Krateo marketplace registers this channel. |
+| **pages** | `helm repo add krateo-pages https://krateo-blueprints.github.io/charts/pages` | Portal page sets (`krateo.io/kind: page-set`): installable like blueprints, not listed by the Marketplace. |
 | **operators** | `helm repo add krateo-operators https://krateo-blueprints.github.io/charts/operators` | Operator/KOG install charts, CRD/helper/target subcharts, plain dependency/app charts. Installable via helm; not rendered as marketplace tiles. |
 
 **How every chart in the organisation is published is decided once, in [PUBLISHING.md](PUBLISHING.md)**, and
@@ -17,8 +18,8 @@ before 2026-11-07 keep their original URLs, so no existing release asset may be 
 
 ## Layout
 
-- **`gh-pages`** branch (Pages source, `/`): `blueprints/index.yaml` and `operators/index.yaml`, the
-  two channel indexes; `icons/`; the 2026 backfill's tarballs; `.nojekyll`.
+- **`gh-pages`** branch (Pages source, `/`): `blueprints/`, `pages/` and `operators/` `index.yaml`, the
+  three channel indexes; `icons/`; the 2026 backfill's tarballs; `.nojekyll`.
 - GitHub **Releases** of this repository: the tarball store, one release per `<name>-<version>`.
 - **`main`**: `.github/workflows/publish-chart.yaml`, the reusable publisher. Callers pin a full commit SHA with its `# 1.x.y` version comment, upgraded by Dependabot (PUBLISHING.md rule 9).
 
