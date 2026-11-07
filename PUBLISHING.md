@@ -141,8 +141,10 @@ No release reported any of this.
    nothing fails to warn you.
 
    The publisher also refuses a token containing whitespace or a control character, usually a
-   trailing newline from piping into `gh secret set`. Such a token passes the API, which trims it,
-   then breaks git. It never puts the token in a URL; git authenticates through `gh`'s credential
+   trailing newline from piping into `gh secret set`. Such a token authenticates, then breaks any
+   use that builds a URL from it, so no check of whether the token works can see the problem. In
+   github-provider-kog's 0.7.6 run, the publisher's own write check passed with that value and the
+   clone failed two steps later, in the same job. It never puts the token in a URL; git authenticates through `gh`'s credential
    helper. Checking before the push is a mitigation, not a guarantee: the publisher can still fail
    after a caller's GHCR push. A half-published version is not lost and needs no new
    version number. Publishing again is safe: the store re-uploads its own version, the index merge
