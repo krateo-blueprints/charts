@@ -141,9 +141,15 @@ No release reported any of this.
    trailing newline from piping into `gh secret set`. Such a token passes the API, which trims it,
    then breaks git. It never puts the token in a URL; git authenticates through `gh`'s credential
    helper. Checking before the push is a mitigation, not a guarantee: the publisher can still fail
-   after a caller's GHCR push. When it does, re-run the failed publisher job once the cause is
-   fixed. It is safe to repeat: the store re-uploads its own version, the index merge keeps existing
-   entries, and an unchanged index is not committed.
+   after a caller's GHCR push. A half-published version is not lost and needs no new
+   version number. Publishing again is safe: the store re-uploads its own version, the index merge
+   keeps existing entries, and an unchanged index is not committed. How to publish again depends on
+   where the cause was:
+   - **Outside the publisher**, such as the secret: re-run the failed publisher job.
+   - **In the publisher:** re-running the job reuses the old pin, so it fails the same way. Re-pin
+     the caller to the fixed publisher on `main`, then run the release again for the same version:
+     `workflow_dispatch`, or re-push the tag. The GHCR push skips an identical version, and the
+     index then receives it.
 
 8. **The release isn't done until the Marketplace can install it.** The publisher reads the served
    `index.yaml` until every chart it published is listed at its version, then installs each one
