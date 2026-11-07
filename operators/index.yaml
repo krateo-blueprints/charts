@@ -261,6 +261,25 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/bedrockagentcorecontrol-chart-1.9.1.tgz
     version: 1.9.1
+  child-parent-sso:
+  - apiVersion: v2
+    created: "2026-11-07T21:11:35.839288031Z"
+    description: The child authn's OIDCConfig for signing in through the parent platform's
+      Keycloak as a public client.
+    digest: 23e8a4d718bdd3b22f3ea5d3bfb6dc1b6b9bb3601501c1f6da7d180f04c189de
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - authn
+    - oidc
+    name: child-parent-sso
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/child-parent-sso-0.2.58/child-parent-sso-0.2.58.tgz
+    version: 0.2.58
   cloudfront-chart:
   - apiVersion: v1
     appVersion: 1.5.1
@@ -2070,6 +2089,24 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/secretsmanager-chart-1.3.1.tgz
     version: 1.3.1
+  selfservice-status:
+  - apiVersion: v2
+    created: "2026-11-07T21:11:35.887427637Z"
+    description: RESTAction that gives a SelfserviceKrateo composition its portal
+      URL, plan and trial deadline.
+    digest: 65a2bea557d65664666d0302964e0eceed978f8bd17bf55b181fa32bb1d8c28f
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - restaction
+    name: selfservice-status
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/selfservice-status-0.2.58/selfservice-status-0.2.58.tgz
+    version: 0.2.58
   ses-chart:
   - apiVersion: v1
     appVersion: 1.3.1
@@ -2213,4 +2250,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-07T21:09:05.623717633Z"
+generated: "2026-11-07T21:11:35.887211209Z"
