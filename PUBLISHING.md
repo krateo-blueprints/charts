@@ -97,11 +97,16 @@ No release reported any of this.
    anonymously with `helm pull --repo`, the path the Marketplace uses. If either check fails, the
    release fails. Callers don't need their own check.
 
-9. **Callers pin `@1`.** Tags here are plain semver with no `v` prefix, the organisation's
-   convention. Every publisher release gets an immutable tag such as `1.0.0`. The major tag `1`
-   moves to the newest `1.x.y`, and only for fixes that change no caller-visible input, output or
-   rule. Anything else is `2.0.0`, with `2` as its major tag. Callers pin the major tag, so a fix
-   reaches every repository at once, as #5 and #6 had to.
+9. **Callers pin the publisher's full commit SHA, with its version in a comment, and let Dependabot
+   upgrade it.** For example: `publish-chart.yaml@<40-character sha> # 1.0.0`. The publisher receives
+   `CHARTS_PUBLISH_TOKEN`, an org-wide write token. A movable ref, whether a branch or a tag like
+   `1`, would let whoever moves it run code with that token in every caller at once. A SHA can't
+   move.
+   - **Releases:** tags here are plain semver with no `v` prefix (the organisation's convention),
+     and each release is cut as a tag such as `1.0.0` on `main`.
+   - **Upgrades:** every caller has `.github/dependabot.yml` with the `github-actions` ecosystem,
+     so a new publisher release arrives as a reviewed pull request in each repository rather than
+     silently. That is how a fix like #5 or #6 still reaches everyone.
 
 10. **Released commits passed lint.** The caller's release refuses a commit with no successful lint
     run. That check belongs to the caller's workflow, because only the caller knows its own lint.
@@ -141,7 +146,7 @@ only when `github.repository_owner` is `krateo-blueprints`.
 ```yaml
   publish-index:
     needs: release        # your job that pushed to GHCR and uploaded the .tgz as artifact "charts-dist"
-    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@1
+    uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@<sha> # 1.0.0
     with:
       source_repo: ${{ github.repository }}
       git_tag: ${{ github.ref_name }}
