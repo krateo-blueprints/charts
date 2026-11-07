@@ -124,8 +124,12 @@ No release reported any of this.
    visible to all repositories, and it has no fallback. `RELEASE_FEED_TOKEN` is for the
    release-notes feed and is never used for the index. The publisher checks that the token can
    write here before it does anything else, so a dead token fails at the first step with a message
-   that says so. A caller's own token check runs before its GHCR push and checks the same secret it
-   passes to the publisher. When dropping an old fallback, change both places: a check left on
+   that says so. A caller's own token check gates its GHCR push: the push job depends on the check.
+   Making only the publisher call depend on it changes nothing, because that call already runs after
+   the push. A check that also reads the packaged archives can't simply be moved in front; split it
+   into a token check before the push and an archive check after packaging. The check tests the same
+   secret the caller passes to the publisher. With no valid token, a release produces nothing, not
+   even the GHCR artifact. When dropping an old fallback, change both places: a check left on
    `CHARTS_PUBLISH_TOKEN || RELEASE_FEED_TOKEN` validates a token the publish no longer sends, and
    nothing fails to warn you.
 
