@@ -68,6 +68,16 @@ jobs:
             echo "::error::PUBLISH_TOKEN is empty. Pass secrets.CHARTS_PUBLISH_TOKEN (PUBLISHING.md rule 7)."
             exit 1
           fi
+          # A token that carries whitespace or a control character (typically a trailing newline from
+          # `echo ... | gh secret set`) authenticates through the API, which trims it, and then breaks
+          # anything that puts it in a URL. That happened on the first two real releases under 1.0.0
+          # (github-provider-kog 0.7.6, openstack-ironic-operator-kog 0.3.1): the write check passed,
+          # and git refused the clone URL. Refuse it here, by name, before anything is written.
+          case "${GH_TOKEN}" in
+            *[[:space:]]*|*[[:cntrl:]]*)
+              echo "::error::PUBLISH_TOKEN contains whitespace or a control character, usually a trailing newline. Re-save the org secret CHARTS_PUBLISH_TOKEN by pasting the token at the prompt of 'gh secret set CHARTS_PUBLISH_TOKEN --org krateo-blueprints --visibility all' (not piped from echo)."
+              exit 1 ;;
+          esac
           if ! push="$(gh api repos/krateo-blueprints/charts --jq .permissions.push 2>&1)"; then
             echo "::error::PUBLISH_TOKEN does not authenticate: ${push}. It is expired, revoked or mistyped."
             exit 1
@@ -163,8 +173,10 @@ jobs:
         env:
           INDEX_REPO: krateo-blueprints/charts
         run: |
-          git clone --branch gh-pages --depth 1 \
-            "https://x-access-token:${GH_TOKEN}@github.com/${INDEX_REPO}" gh-pages
+          # git authenticates through gh's credential helper, which reads GH_TOKEN. The token is never
+          # put in a URL: a URL is parsed, logged in some git errors, and stored in .git/config.
+          gh auth setup-git
+          git clone --branch gh-pages --depth 1 "https://github.com/${INDEX_REPO}" gh-pages
 
       # One owner per chart name (rule 6), decided before anything is written. The owner is, in
       # order: the entry's source-repo annotation; the repository recorded in this repo's release
