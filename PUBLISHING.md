@@ -159,6 +159,10 @@ only when `github.repository_owner` is `krateo-blueprints`.
 - **Deleting a per-chart release or a stored tarball.** About 1,247 entries indexed before this
   standard resolve through per-chart releases in the callers' repositories, and the rest resolve
   here or on gh-pages. Deleting one breaks that version for everyone.
+- **Removing or editing an index entry.** Diego decided on 2026-11-07 that the 2026-08-19 backfill's
+  stale or misfiled entries are superseded, not removed. Examples are nova 0.1.0,
+  hyperdx-provider 0.1.2 in `blueprints` and hetzner-object-storage-kog 0.1.0 in `operators`. The
+  next release under this standard adds a newer version, which the Marketplace offers first.
 - **Rebuilding an index from scratch.** `helm repo index` without `--merge` drops every entry whose
   tarball isn't in the directory it indexes. The old `reconcile.yaml` did exactly that, from
   gh-pages only, so it has been removed.
