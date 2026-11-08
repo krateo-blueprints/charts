@@ -136,8 +136,12 @@ jobs:
             fi
             # Rule 3: every chart names its source repository, so a pinned chart can be traced to the
             # commit and CI run that built it.
+            # GitHub owner and repository names are case-insensitive, and a builder writes them as the
+            # author typed them, so compare lower-cased (frontend, 2026-11-07).
             src_url="https://github.com/${SRC}"
-            yq -e ".sources // [] | .[] | select(. == \"${src_url}\")" <<< "$chart_yaml" >/dev/null 2>&1 || { echo "::error::$name: Chart.yaml sources: must list ${src_url}, the repository that builds it"; fail=1; }
+            src_lc="$(tr '[:upper:]' '[:lower:]' <<< "$src_url")"
+            yq -r '.sources // [] | .[]' <<< "$chart_yaml" | tr '[:upper:]' '[:lower:]' | sed 's#/*$##' | grep -qxF "$src_lc" \
+              || { echo "::error::$name: Chart.yaml sources: must list ${src_url}, the repository that builds it"; fail=1; }
             has_schema=no; has_cd=no
             grep -qxF "${name}/values.schema.json" <<< "$members" && has_schema=yes
             grep -qxF "${name}/compositiondefinition.yaml" <<< "$members" && has_cd=yes
@@ -193,7 +197,7 @@ jobs:
           set -euo pipefail
           IDX="gh-pages/${CHANNEL}/index.yaml"
           [ -f "$IDX" ] || exit 0
-          norm() { sed 's#^braghettos/#krateo-blueprints/#'; }
+          norm() { tr '[:upper:]' '[:lower:]' | sed 's#^braghettos/#krateo-blueprints/#'; }
           me="$(norm <<< "$SRC")"
           fail=0
           for tgz in dist/*.tgz; do
@@ -248,7 +252,7 @@ jobs:
             base="$(basename "$tgz" .tgz)"
             if notes="$(gh release view "$base" --repo "$STORE" --json body --jq .body 2>/dev/null)"; then
               owner="$(sed -n 's/^from \([^@]*\)@.*/\1/p' <<< "$notes" | head -n1)"
-              if [ -n "$owner" ] && [ "$owner" != "$SRC" ]; then
+              if [ -n "$owner" ] && [ "$(tr '[:upper:]' '[:lower:]' <<< "$owner")" != "$(tr '[:upper:]' '[:lower:]' <<< "$SRC")" ]; then
                 echo "::error::${base} is already stored here by ${owner}; refusing to overwrite it from ${SRC}"
                 exit 1
               fi
