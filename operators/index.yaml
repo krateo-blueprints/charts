@@ -263,6 +263,24 @@ entries:
     version: 1.9.1
   child-parent-sso:
   - apiVersion: v2
+    created: "2026-11-08T15:17:37.958020603Z"
+    description: The child authn's OIDCConfig for signing in through the parent platform's
+      Keycloak as a public client.
+    digest: dc83b50d2bf66086420c410b99d7bdaf738ccef038dc941fd14253fbba718b3f
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - authn
+    - oidc
+    name: child-parent-sso
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/child-parent-sso-0.2.59/child-parent-sso-0.2.59.tgz
+    version: 0.2.59
+  - apiVersion: v2
     created: "2026-11-07T21:11:35.839288031Z"
     description: The child authn's OIDCConfig for signing in through the parent platform's
       Keycloak as a public client.
@@ -2091,6 +2109,23 @@ entries:
     version: 1.3.1
   selfservice-status:
   - apiVersion: v2
+    created: "2026-11-08T15:17:38.01866628Z"
+    description: RESTAction that gives a SelfserviceKrateo composition its portal
+      URL, plan and trial deadline.
+    digest: ff52fcff04ebbd52b181e73868b11bffc8cc457a2ff2cb67ccfca45ee5df45da
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - restaction
+    name: selfservice-status
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/selfservice-status-0.2.59/selfservice-status-0.2.59.tgz
+    version: 0.2.59
+  - apiVersion: v2
     created: "2026-11-07T21:11:35.887427637Z"
     description: RESTAction that gives a SelfserviceKrateo composition its portal
       URL, plan and trial deadline.
@@ -2250,4 +2285,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-07T21:11:35.887211209Z"
+generated: "2026-11-08T15:17:38.018384552Z"
