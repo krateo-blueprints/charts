@@ -44897,6 +44897,37 @@ entries:
       krateo.io/maturity: beta
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
+    created: "2026-11-09T19:37:45.447668762Z"
+    description: 'Krateo Operator Generator (KOG) packaging that turns OpenStack Nova
+      compute instances into native Kubernetes custom resources, validated against
+      OVH Public Cloud as the managed OpenStack target. '
+    digest: c66b9b9f0a860258871e536053dc439e3969660cae54ced16def3e2c28c94a48
+    home: https://github.com/krateo-blueprints/openstack-nova-operator-kog
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - krateo
+    - kog
+    - oasgen-provider
+    - openstack
+    - nova
+    - ovh
+    - operator
+    - compute
+    maintainers:
+    - name: krateo
+    name: openstack-nova-operator-kog
+    sources:
+    - https://github.com/krateo-blueprints/openstack-nova-operator-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/openstack-nova-operator-kog-0.1.6/openstack-nova-operator-kog-0.1.6.tgz
+    version: 0.1.6
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/display-name: OpenStack Nova KOG
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
     appVersion: 0.1.0
     created: "2026-08-19T04:26:00.208191981Z"
     description: 'Krateo Operator Generator (KOG) packaging that turns OpenStack Nova
@@ -47903,4 +47934,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-09T14:02:43.152819444Z"
+generated: "2026-11-09T19:37:45.44670803Z"
