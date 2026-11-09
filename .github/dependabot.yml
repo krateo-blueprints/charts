@@ -1,0 +1,9 @@
+# The publisher pins every action by full commit SHA (PUBLISHING.md rule 9). Pins do not move on
+# their own, so Dependabot proposes the updates: without it, the publisher's actions age until
+# GitHub deprecates their runtime and every caller's publish breaks at once.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
