@@ -41889,6 +41889,35 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/kagent-0.1.4.tgz
     version: 0.1.4
+  keycloak:
+  - annotations:
+      krateo.io/category: security
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "26.0"
+    created: "2026-11-10T09:34:05.370478247Z"
+    description: Krateo blueprint that deploys and manages a Keycloak server via the
+      official Keycloak Operator.
+    digest: 9cba588e467ad7b8c3b4e4ce9be460eff6d5f5439230d243c9aaafa484e7b4b0
+    home: https://www.keycloak.org/operator/installation
+    icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/keycloak/icon/color/keycloak-icon-color.svg
+    keywords:
+    - keycloak
+    - identity
+    - sso
+    - security
+    - authentication
+    maintainers:
+    - name: krateo
+    name: keycloak
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-blueprint
+    - https://github.com/keycloak/keycloak/tree/main/operator
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keycloak-0.2.2/keycloak-0.2.2.tgz
+    version: 0.2.2
   keycloak-config-kog:
   - annotations:
       krateo.io/category: security
@@ -50222,4 +50251,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-10T07:55:53.513154853Z"
+generated: "2026-11-10T09:34:05.369868909Z"
