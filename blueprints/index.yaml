@@ -27514,13 +27514,13 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "1.0"
-    created: "2026-11-10T13:13:17.755097726Z"
+    created: "2026-11-11T10:01:26.608695237Z"
     description: Register, inspect, provision and release a physical server through
       OpenStack Ironic, as one Kubernetes resource. Declare the host's BMC, its NICs
       and the OS image to deploy; the composition drives Ironic's state machine from
       enrollment to a running machine and back, and holds it there. Needs a reachable
       Ironic API (standalone or full OpenStack) -- it does not install one.
-    digest: fa6e9bdc0bd57e07c3923d12b381f09080f82e33dbec838530574feb9578b5cb
+    digest: 963edf8abc9358ed72feea3876d141c3dbf6fef34398fd0ed88c363720f41f39
     home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
     icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
     keywords:
@@ -43264,6 +43264,47 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "1.0"
+    created: "2026-11-11T10:01:27.109592124Z"
+    description: Turn a set of physical servers into a working Kubernetes cluster.
+      Declare the control plane and worker blades and the OS image; the composition
+      provisions each machine through OpenStack Ironic, bootstraps the cluster with
+      kubeadm, joins the rest and installs Cilium. Upstream Kubernetes from pkgs.k8s.io,
+      unmodified -- this is an installer, not a distribution, and the 1.36 build it
+      produces passes the CNCF conformance suite 443/443. Day-two operations (add
+      and drain workers, reimage a node onto a new Kubernetes version, recover a failed
+      control plane, snapshot etcd) are inputs on the same resource. Needs a reachable
+      Ironic API and the baremetal-host blueprint registered alongside it.
+    digest: b2b5946969f732104047df883314f285bd339d686820d0004f90364881c6efbd
+    home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
+    keywords:
+    - kubernetes
+    - kubeadm
+    - cilium
+    - bare-metal
+    - ironic
+    - conformance
+    - krateo
+    maintainers:
+    - name: openstack-ironic-operator-kog
+      url: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    name: kubernetes-cluster
+    sources:
+    - https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    - https://kubernetes.io/docs/reference/setup-tools/kubeadm/
+    - https://docs.openstack.org/ironic/latest/
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/kubernetes-cluster-0.15.3/kubernetes-cluster-0.15.3.tgz
+    version: 0.15.3
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/display-name: Kubernetes on Bare Metal
+      krateo.io/maturity: alpha
+      krateo.io/source-repo: krateo-blueprints/openstack-ironic-operator-kog
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "1.0"
     created: "2026-11-10T13:13:18.130361437Z"
     description: Turn a set of physical servers into a working Kubernetes cluster.
       Declare the control plane and worker blades and the OS image; the composition
@@ -51531,4 +51572,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-11T08:24:38.342888838Z"
+generated: "2026-11-11T10:01:27.107526266Z"
