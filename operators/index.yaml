@@ -1312,6 +1312,27 @@ entries:
   keycloak-operator:
   - apiVersion: v2
     appVersion: 26.6.3
+    created: "2026-11-11T20:14:06.61090084Z"
+    description: 'Thin wrapper packaging the upstream Keycloak Operator: its Deployment,
+      RBAC and the two official CRDs (Keycloak, KeycloakRealmImport). Ships no Krateo
+      logic — it exists so the keycloak blueprint''s Keycloak CRs have a controller
+      to reconcile them.'
+    digest: e33db20287044d77ca94a2bcdeb29d1241fbc8662fb08d9dbdd5be25317d5e75
+    home: https://www.keycloak.org/
+    keywords:
+    - keycloak
+    - identity
+    - operator
+    name: keycloak-operator
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-blueprint
+    - https://github.com/keycloak/keycloak-k8s-resources
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keycloak-operator-0.2.6/keycloak-operator-0.2.6.tgz
+    version: 0.2.6
+  - apiVersion: v2
+    appVersion: 26.6.3
     created: "2026-11-11T14:42:02.256735396Z"
     description: 'Thin wrapper packaging the upstream Keycloak Operator: its Deployment,
       RBAC and the two official CRDs (Keycloak, KeycloakRealmImport). Ships no Krateo
@@ -2740,4 +2761,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-11T19:40:02.278412556Z"
+generated: "2026-11-11T20:14:06.607788773Z"
