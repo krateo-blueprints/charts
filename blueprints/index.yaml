@@ -42318,7 +42318,7 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "26.0"
-    created: "2026-11-11T20:14:52.633806542Z"
+    created: "2026-11-11T22:11:04.845618896Z"
     description: Krateo blueprint that deploys and manages a Keycloak server via the
       official Keycloak Operator.
     digest: b0083df2d9e33ba763854b7618b44d39e7b19eceff27db1994948796e473a309
@@ -51771,4 +51771,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-11T20:14:52.633292985Z"
+generated: "2026-11-11T22:11:04.845057547Z"
