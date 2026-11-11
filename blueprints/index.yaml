@@ -42318,6 +42318,34 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "26.0"
+    created: "2026-11-11T20:14:52.633806542Z"
+    description: Krateo blueprint that deploys and manages a Keycloak server via the
+      official Keycloak Operator.
+    digest: b0083df2d9e33ba763854b7618b44d39e7b19eceff27db1994948796e473a309
+    home: https://www.keycloak.org/operator/installation
+    icon: https://raw.githubusercontent.com/cncf/artwork/master/projects/keycloak/icon/color/keycloak-icon-color.svg
+    keywords:
+    - keycloak
+    - identity
+    - sso
+    - security
+    - authentication
+    maintainers:
+    - name: krateo
+    name: keycloak
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-blueprint
+    - https://github.com/keycloak/keycloak/tree/main/operator
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keycloak-0.2.6/keycloak-0.2.6.tgz
+    version: 0.2.6
+  - annotations:
+      krateo.io/category: security
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "26.0"
     created: "2026-11-11T14:42:50.063102225Z"
     description: Krateo blueprint that deploys and manages a Keycloak server via the
       official Keycloak Operator.
@@ -51743,4 +51771,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-11T19:40:07.880706107Z"
+generated: "2026-11-11T20:14:52.633292985Z"
