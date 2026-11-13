@@ -44410,6 +44410,33 @@ entries:
       krateo.io/requires-oasgen-provider: '>= 0.62.0'
     apiVersion: v2
     appVersion: 1.0.0
+    created: "2026-11-13T07:45:09.329160519Z"
+    description: 'A Keycloak parent realm for a Krateo platform, declared as keycloak-config-kog
+      custom resources: realm settings (registration off, set-password and verify-email
+      links by email, events), its groups, and the portal''s public PKCE OIDC client
+      with a groups claim, and the realm''s user profile. Requires keycloak-config-kog
+      >= 0.7.0 installed and authenticated against the target Keycloak.'
+    digest: 66e0108048115911245d15e49d9a8294637dd5d56a893f6754cfcd49e120fa9d
+    home: https://github.com/krateo-blueprints/krateo-keycloak-realm
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - keycloak
+    - realm
+    - oidc
+    maintainers:
+    - name: krateo
+    name: krateo-keycloak-realm
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-realm
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/krateo-keycloak-realm-0.4.0/krateo-keycloak-realm-0.4.0.tgz
+    version: 0.4.0
+  - annotations:
+      krateo.io/requires-keycloak-config-kog: '>= 0.7.1'
+      krateo.io/requires-oasgen-provider: '>= 0.62.0'
+    apiVersion: v2
+    appVersion: 1.0.0
     created: "2026-11-12T21:13:22.157144556Z"
     description: 'A Keycloak parent realm for a Krateo platform, declared as keycloak-config-kog
       custom resources: realm settings (registration off, set-password and verify-email
@@ -54430,4 +54457,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-13T07:41:10.072627632Z"
+generated: "2026-11-13T07:45:09.328086556Z"
