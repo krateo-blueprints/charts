@@ -27750,6 +27750,43 @@ entries:
       krateo.io/category: compute
       krateo.io/display-name: Bare-Metal Host (OpenStack Ironic)
       krateo.io/maturity: alpha
+      krateo.io/publish: "true"
+      krateo.io/source-repo: krateo-blueprints/openstack-ironic-operator-kog
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "1.0"
+    created: "2026-11-13T12:01:56.958782965Z"
+    description: Register, inspect, provision and release a physical server through
+      OpenStack Ironic, as one Kubernetes resource. Declare the host's BMC, its NICs
+      and the OS image to deploy; the composition drives Ironic's state machine from
+      enrollment to a running machine and back, and holds it there. Needs a reachable
+      Ironic API (standalone or full OpenStack) -- it does not install one.
+    digest: 0a82cdef62b7b6f1cfc85f31df5d4d1b59e7de53390a407b3914ffd09e644107
+    home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
+    keywords:
+    - bare-metal
+    - baremetal
+    - ironic
+    - openstack
+    - provisioning
+    - kog
+    - krateo
+    maintainers:
+    - name: openstack-ironic-operator-kog
+      url: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    name: baremetal-host
+    sources:
+    - https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    - https://docs.openstack.org/ironic/latest/
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/baremetal-host-0.6.5/baremetal-host-0.6.5.tgz
+    version: 0.6.5
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/display-name: Bare-Metal Host (OpenStack Ironic)
+      krateo.io/maturity: alpha
       krateo.io/source-repo: krateo-blueprints/openstack-ironic-operator-kog
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
@@ -45657,6 +45694,48 @@ entries:
       krateo.io/category: compute
       krateo.io/display-name: Kubernetes on Bare Metal
       krateo.io/maturity: alpha
+      krateo.io/publish: "true"
+      krateo.io/source-repo: krateo-blueprints/openstack-ironic-operator-kog
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "1.0"
+    created: "2026-11-13T12:01:57.304702236Z"
+    description: Turn a set of physical servers into a working Kubernetes cluster.
+      Declare the control plane and worker blades and the OS image; the composition
+      provisions each machine through OpenStack Ironic, bootstraps the cluster with
+      kubeadm, joins the rest and installs Cilium. Upstream Kubernetes from pkgs.k8s.io,
+      unmodified -- this is an installer, not a distribution, and the 1.36 build it
+      produces passes the CNCF conformance suite 443/443. Day-two operations (add
+      and drain workers, reimage a node onto a new Kubernetes version, recover a failed
+      control plane, snapshot etcd) are inputs on the same resource. Needs a reachable
+      Ironic API and the baremetal-host blueprint registered alongside it.
+    digest: 376b77ed8363a5b1e45afaf4b78e76d9099f3ff89d727f51028542d060074219
+    home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
+    keywords:
+    - kubernetes
+    - kubeadm
+    - cilium
+    - bare-metal
+    - ironic
+    - conformance
+    - krateo
+    maintainers:
+    - name: openstack-ironic-operator-kog
+      url: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    name: kubernetes-cluster
+    sources:
+    - https://github.com/krateo-blueprints/openstack-ironic-operator-kog
+    - https://kubernetes.io/docs/reference/setup-tools/kubeadm/
+    - https://docs.openstack.org/ironic/latest/
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/kubernetes-cluster-0.15.5/kubernetes-cluster-0.15.5.tgz
+    version: 0.15.5
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/display-name: Kubernetes on Bare Metal
+      krateo.io/maturity: alpha
       krateo.io/source-repo: krateo-blueprints/openstack-ironic-operator-kog
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
@@ -56708,4 +56787,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-13T11:47:58.608200781Z"
+generated: "2026-11-13T12:01:57.302781676Z"
