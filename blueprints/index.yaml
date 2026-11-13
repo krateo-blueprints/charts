@@ -27815,13 +27815,13 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "1.0"
-    created: "2026-11-13T12:01:56.958782965Z"
+    created: "2026-11-13T16:45:40.677100137Z"
     description: Register, inspect, provision and release a physical server through
       OpenStack Ironic, as one Kubernetes resource. Declare the host's BMC, its NICs
       and the OS image to deploy; the composition drives Ironic's state machine from
       enrollment to a running machine and back, and holds it there. Needs a reachable
       Ironic API (standalone or full OpenStack) -- it does not install one.
-    digest: 0a82cdef62b7b6f1cfc85f31df5d4d1b59e7de53390a407b3914ffd09e644107
+    digest: ffe078a9910f1b19b99254ac2f4967e77aa87d5a734c75c8670d2754f6951d1b
     home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
     icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
     keywords:
@@ -46151,7 +46151,7 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "1.0"
-    created: "2026-11-13T12:01:57.304702236Z"
+    created: "2026-11-13T16:45:41.213411055Z"
     description: Turn a set of physical servers into a working Kubernetes cluster.
       Declare the control plane and worker blades and the OS image; the composition
       provisions each machine through OpenStack Ironic, bootstraps the cluster with
@@ -46161,7 +46161,7 @@ entries:
       and drain workers, reimage a node onto a new Kubernetes version, recover a failed
       control plane, snapshot etcd) are inputs on the same resource. Needs a reachable
       Ironic API and the baremetal-host blueprint registered alongside it.
-    digest: 376b77ed8363a5b1e45afaf4b78e76d9099f3ff89d727f51028542d060074219
+    digest: 5ad7b6b0f76c339abf65aa15ddcb6ae2365db06275913c1152ebbc7f3c95335a
     home: https://github.com/krateo-blueprints/openstack-ironic-operator-kog
     icon: https://raw.githubusercontent.com/krateo-blueprints/openstack-ironic-operator-kog/1516dd678f3c0760557bd1f142db0a67f81b8abd/branding/krateo-akmon-mark.svg
     keywords:
@@ -57887,4 +57887,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-13T15:43:18.050929044Z"
+generated: "2026-11-13T16:45:41.211220087Z"
