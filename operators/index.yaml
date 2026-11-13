@@ -169,6 +169,33 @@ entries:
     version: 1.0.0
   azuredevops-provider-kog:
   - annotations:
+      org.opencontainers.image.ref.name: 0.4.0
+      org.opencontainers.image.revision: 0fca82d4a95c1d789384fc69e4ca7edd76cec03d
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/azuredevops-provider-kog
+      org.opencontainers.image.version: 0.4.0
+    apiVersion: v2
+    appVersion: 0.4.0
+    created: "2026-11-13T13:28:01.556287857Z"
+    description: 'Krateo KOG provider (oasgen-provider 0.63.1) exposing Azure DevOps
+      (projects, Git repositories, pipelines, permissions, service connections, variable
+      groups, artifact feeds, teams, groups and users) as azuredevops.krateo.io Kubernetes
+      kinds. Every kind is native: the chart ships only RestDefinitions and trimmed
+      OpenAPI specs, with no controller image and no proxy plugin.'
+    digest: 5c660c64afc00d01ba9da658a8691cb56756468bf28d3eab960c79bc5bfbaed2
+    home: https://github.com/krateo-blueprints/azuredevops-provider-kog
+    keywords:
+    - krateo
+    - kog
+    - oasgen-provider
+    - azure-devops
+    name: azuredevops-provider-kog
+    sources:
+    - https://github.com/krateo-blueprints/azuredevops-provider-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/azuredevops-provider-kog-0.4.0/azuredevops-provider-kog-0.4.0.tgz
+    version: 0.4.0
+  - annotations:
       org.opencontainers.image.ref.name: 0.3.0
       org.opencontainers.image.revision: 94d146e25e25277f2c615932654d272bb12e9578
       org.opencontainers.image.source: https://github.com/krateo-blueprints/azuredevops-provider-kog
@@ -250,6 +277,31 @@ entries:
     - https://github.com/krateo-blueprints/charts/releases/download/azuredevops-provider-kog-0.1.0/azuredevops-provider-kog-0.1.0.tgz
     version: 0.1.0
   azuredevops-provider-kog-config:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.4.0
+      org.opencontainers.image.revision: 0fca82d4a95c1d789384fc69e4ca7edd76cec03d
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/azuredevops-provider-kog
+      org.opencontainers.image.version: 0.4.0
+    apiVersion: v2
+    appVersion: 0.4.0
+    created: "2026-11-13T13:28:01.604195901Z"
+    description: The per-kind <Kind>Configuration objects for azuredevops-provider-kog,
+      all naming one Secret that holds an Azure DevOps PAT. A separate chart because
+      these CRDs exist only after oasgen-provider has processed the azuredevops-provider-kog
+      RestDefinitions. Holds no credential.
+    digest: d2dd7f408c10a0340d65cc6bdbedbcd885daac6c8b2e97e54cf927648caec27d
+    home: https://github.com/krateo-blueprints/azuredevops-provider-kog
+    keywords:
+    - krateo
+    - kog
+    - azure-devops
+    name: azuredevops-provider-kog-config
+    sources:
+    - https://github.com/krateo-blueprints/azuredevops-provider-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/azuredevops-provider-kog-config-0.4.0/azuredevops-provider-kog-config-0.4.0.tgz
+    version: 0.4.0
   - annotations:
       org.opencontainers.image.ref.name: 0.3.0
       org.opencontainers.image.revision: 94d146e25e25277f2c615932654d272bb12e9578
@@ -2927,4 +2979,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-13T11:48:51.46252926Z"
+generated: "2026-11-13T13:28:01.60390532Z"
