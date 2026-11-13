@@ -23,6 +23,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:02.091397608Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: Openstack-Helm Aodh
+    digest: 68345384e4977af378e8b9c04c90a0645ab248bb0c9c4c9248825b3e03b150ed
+    home: https://docs.openstack.org/aodh/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/telemetry.png
+    keywords:
+    - openstack
+    - alarming
+    - telemetry
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: aodh
+    sources:
+    - https://opendev.org/openstack/aodh
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/aodh-0.3.51/aodh-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: observability
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:17.644661561Z"
     dependencies:
     - name: helm-toolkit
@@ -27242,6 +27272,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:02.493269796Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Barbican
+    digest: cb27de08b06a685dafd68a3156c1a4f0ad1ac86f08712c8888ca4361fb31eed7
+    home: https://docs.openstack.org/barbican/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/barbican.png
+    keywords:
+    - openstack
+    - secrets
+    - key-management
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: barbican
+    sources:
+    - https://opendev.org/openstack/barbican
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/barbican-0.3.51/barbican-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: security
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:17.955858686Z"
     dependencies:
     - name: helm-toolkit
@@ -27760,6 +27820,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:02.908555782Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack Resource Reservation Service
+    digest: 6d73618eda3377ebd03406e0f76ef0b545f73a5db7b8673440c693d2d51d2193
+    home: https://docs.openstack.org/blazar/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - reservation
+    - helm
+    maintainers:
+    - email: openstack-helm@lists.openstack.org
+      name: OpenStack Helm Team
+    name: blazar
+    sources:
+    - https://opendev.org/openstack/blazar
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/blazar-0.3.51/blazar-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:18.26935612Z"
     dependencies:
     - name: helm-toolkit
@@ -28210,6 +28300,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:03.314055514Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Ceilometer
+    digest: f03128ed2986b7a0569fc8fed0603d61b02ce54aae09727c4251ed06e6e3147e
+    home: https://docs.openstack.org/ceilometer/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/telemetry.png
+    keywords:
+    - openstack
+    - telemetry
+    - metering
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: ceilometer
+    sources:
+    - https://opendev.org/openstack/ceilometer
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/ceilometer-0.3.51/ceilometer-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: observability
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:18.576854048Z"
     dependencies:
     - name: helm-toolkit
@@ -28654,6 +28774,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/ceilometer-0.2.0.tgz
     version: 0.2.0
   cinder:
+  - annotations:
+      krateo.io/category: storage
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:03.721496373Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Cinder
+    digest: 9d6b98e6552881a737d4276663c9671f27f726a3274d1f045a26faf19dc88495
+    home: https://docs.openstack.org/cinder/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/cinder.png
+    keywords:
+    - openstack
+    - block-storage
+    - cinder
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: cinder
+    sources:
+    - https://opendev.org/openstack/cinder
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cinder-0.3.51/cinder-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: storage
       krateo.io/maturity: stable
@@ -29169,6 +29319,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:04.141581843Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Cloudkitty
+    digest: 04b959d4d34205be6671336f700e6c7c9033d9c989353a8bb82d355db8ebc139
+    home: https://docs.openstack.org/cloudkitty/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/cloudkitty.png
+    keywords:
+    - openstack
+    - rating
+    - billing
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: cloudkitty
+    sources:
+    - https://opendev.org/openstack/cloudkitty
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cloudkitty-0.3.51/cloudkitty-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: observability
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:19.185045175Z"
     dependencies:
     - name: helm-toolkit
@@ -29619,6 +29799,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:04.556820063Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Cyborg
+    digest: 8a18712eed2f3929def4324e54e43ab3c3d4c53dc11de2f0ea27acef0ddf00a6
+    home: https://docs.openstack.org/cyborg
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - accelerator
+    - cyborg
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: cyborg
+    sources:
+    - https://opendev.org/openstack/cyborg
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cyborg-0.3.51/cyborg-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:19.487755464Z"
     dependencies:
     - name: helm-toolkit
@@ -30063,6 +30273,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/cyborg-0.2.0.tgz
     version: 0.2.0
   designate:
+  - annotations:
+      krateo.io/category: network
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:04.962367557Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Designate
+    digest: df7ba15f7e085203b25a6c3e2119d6b844b2a00659dace3351542835a5a9df68
+    home: https://docs.openstack.org/designate/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/designate.png
+    keywords:
+    - openstack
+    - dns
+    - designate
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: designate
+    sources:
+    - https://opendev.org/openstack/designate
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/designate-0.3.51/designate-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: network
       krateo.io/maturity: stable
@@ -30571,6 +30811,38 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/fetch-mcp-server-0.1.1.tgz
     version: 0.1.1
   freezer:
+  - annotations:
+      helm.sh/hook-weight: "-5"
+      krateo.io/category: application
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:05.372008447Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack Freezer Backup and Restore Service platform
+    digest: 9eae7f97a6b657fe4101b5dd2282d2f0c5c5d966359259961ebd66f36137e7f4
+    home: https://docs.openstack.org/freezer/latest
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/freezer.png
+    keywords:
+    - openstack
+    - backup
+    - restore
+    - helm
+    maintainers:
+    - name: OpenStack Helm Team
+    name: freezer
+    sources:
+    - https://opendev.org/openstack/freezer
+    - https://opendev.org/openstack/freezer-api
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/freezer-0.3.51/freezer-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       helm.sh/hook-weight: "-5"
       krateo.io/category: application
@@ -41235,6 +41507,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:05.789873485Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Glance
+    digest: 1a7e05af39b836f29cbaf8da62e52a60606c3003f0224c30a0e61716d6ace290
+    home: https://docs.openstack.org/glance/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/glance.png
+    keywords:
+    - openstack
+    - image
+    - glance
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: glance
+    sources:
+    - https://opendev.org/openstack/glance
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/glance-0.3.51/glance-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: storage
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:20.411555695Z"
     dependencies:
     - name: helm-toolkit
@@ -41679,6 +41981,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/glance-0.2.0.tgz
     version: 0.2.0
   gnocchi:
+  - annotations:
+      krateo.io/category: observability
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:06.202073262Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Gnocchi
+    digest: 0e83f37cb91a036272391334c37363c37ca6b6d7fe81cd783344339fe3752ffc
+    home: https://gnocchi.xyz/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - metrics
+    - timeseries
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: gnocchi
+    sources:
+    - https://github.com/gnocchixyz/gnocchi
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/gnocchi-0.3.51/gnocchi-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: observability
       krateo.io/maturity: beta
@@ -42135,6 +42467,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:06.634302949Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Heat
+    digest: cd5d087d855a1c4e2b91bb33674a394d7e1bd03c72aeba3f550b9d42dfa8e906
+    home: https://docs.openstack.org/heat/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/heat.png
+    keywords:
+    - openstack
+    - orchestration
+    - heat
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: heat
+    sources:
+    - https://opendev.org/openstack/heat
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/heat-0.3.51/heat-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:21.042281408Z"
     dependencies:
     - name: helm-toolkit
@@ -42579,6 +42941,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/heat-0.2.0.tgz
     version: 0.2.0
   horizon:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:07.044956989Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Horizon
+    digest: 2577a12da6f92126d49544f8e1a6ea2a88bf990510c41224f4095ac8352d9956
+    home: https://docs.openstack.org/horizon/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/horizon.png
+    keywords:
+    - openstack
+    - dashboard
+    - horizon
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: horizon
+    sources:
+    - https://opendev.org/openstack/horizon
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/horizon-0.3.51/horizon-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -43091,6 +43483,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/installer-0.2.151.tgz
     version: 0.2.151
   ironic:
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:07.458081663Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Ironic
+    digest: b4659e47981b653054f40d197b65ccea2c4333c2255291794697cde4af7e31c1
+    home: https://docs.openstack.org/ironic/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/ironic.png
+    keywords:
+    - openstack
+    - baremetal
+    - ironic
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: ironic
+    sources:
+    - https://opendev.org/openstack/ironic
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/ironic-0.3.51/ironic-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: compute
       krateo.io/maturity: beta
@@ -44252,6 +44674,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:07.858384115Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Keystone
+    digest: 03700edd096c313a4a8122e9dc7b8535c850339ecc495f4062abb531d29e0b87
+    home: https://docs.openstack.org/keystone/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/keystone.png
+    keywords:
+    - openstack
+    - identity
+    - keystone
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: keystone
+    sources:
+    - https://opendev.org/openstack/keystone
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keystone-0.3.51/keystone-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: security
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:21.97948783Z"
     dependencies:
     - name: helm-toolkit
@@ -45372,6 +45824,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:08.266046299Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm libvirt
+    digest: 46b7a7944b85c7ea61f1e953c105b9f1c95055ed68bd9260b1737665aa7e4668
+    home: https://libvirt.org
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - libvirt
+    - hypervisor
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: libvirt
+    sources:
+    - https://libvirt.org/git/?p=libvirt.git;a=summary
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/libvirt-0.3.51/libvirt-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:22.278310459Z"
     dependencies:
     - name: helm-toolkit
@@ -45816,6 +46298,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/libvirt-0.2.0.tgz
     version: 0.2.0
   magnum:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:08.679087285Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Magnum
+    digest: 8ad26dee594c29eef6ee5daa517b38ec30e332cb2674bfc2bb62c3dea134fd18
+    home: https://docs.openstack.org/magnum/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/magnum.png
+    keywords:
+    - openstack
+    - container
+    - magnum
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: magnum
+    sources:
+    - https://opendev.org/openstack/magnum
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/magnum-0.3.51/magnum-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -46272,6 +46784,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:09.088636799Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Manila
+    digest: 94df7cd5ff23795e306e1e9bd8ec3f34813f32a03714f843fd59b97f3dbde6c9
+    home: https://docs.openstack.org/manila/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/manila.png
+    keywords:
+    - openstack
+    - shared-filesystem
+    - manila
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: manila
+    sources:
+    - https://opendev.org/openstack/manila
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/manila-0.3.51/manila-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: storage
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:22.893354918Z"
     dependencies:
     - name: helm-toolkit
@@ -46722,6 +47264,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:09.500733095Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm MariaDB
+    digest: ab7a61d2740b7eecc1febe6a5726d0208e03705575824c297500d85676fd6ed1
+    home: https://mariadb.com/kb/en/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - database
+    - mariadb
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: mariadb
+    sources:
+    - https://github.com/MariaDB/server
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/mariadb-0.3.51/mariadb-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: database
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:23.211771835Z"
     dependencies:
     - name: helm-toolkit
@@ -47166,6 +47738,37 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/mariadb-0.2.0.tgz
     version: 0.2.0
   masakari:
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:09.925199532Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Masakari
+    digest: 786bd7b5cbf60d562121f5c5be64b4b66f7d02b1eebfcbdd0bc800c04dcff614
+    home: https://docs.openstack.org/developer/masakari
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/masakari.png
+    keywords:
+    - openstack
+    - high-availability
+    - masakari
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: masakari
+    sources:
+    - https://opendev.org/openstack/masakari
+    - https://opendev.org/openstack/masakari-monitors
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/masakari-0.3.51/masakari-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: compute
       krateo.io/maturity: beta
@@ -47690,6 +48293,34 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:10.360909256Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Memcached
+    digest: 2331da7b8740289138084c42c80ca1c1fcd968938e03a7812c4083592a076610
+    home: https://github.com/memcached/memcached
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - cache
+    - memcached
+    name: memcached
+    sources:
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    - https://github.com/memcached/memcached
+    - https://opendev.org/openstack/openstack-helm
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/memcached-0.3.51/memcached-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:23.832403904Z"
     dependencies:
     - name: helm-toolkit
@@ -48101,6 +48732,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/memcached-0.2.0.tgz
     version: 0.2.0
   mistral:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:10.783807584Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Mistral
+    digest: 0b8a71c57698335923b4e76cfc3c16b572054edf42ce47f25d6b280a83ee5c18
+    home: https://docs.openstack.org/mistral/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/mistral.png
+    keywords:
+    - openstack
+    - workflow
+    - mistral
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: mistral
+    sources:
+    - https://opendev.org/openstack/mistral
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/mistral-0.3.51/mistral-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -48590,6 +49251,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:11.206326822Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Neutron
+    digest: dd66bc80a5fa5f59071c60a61dac141d6779a5a284da6ce4115e202389d36ab6
+    home: https://docs.openstack.org/neutron/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/neutron.png
+    keywords:
+    - openstack
+    - networking
+    - neutron
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: neutron
+    sources:
+    - https://opendev.org/openstack/neutron
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/neutron-0.3.51/neutron-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: network
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:24.484482394Z"
     dependencies:
     - name: helm-toolkit
@@ -49034,6 +49725,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/neutron-0.2.0.tgz
     version: 0.2.0
   nova:
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:11.616280824Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Nova
+    digest: 74f297ffea55560eeb1b40ffe41955b95a37ef53949da3bff24219056827aa3a
+    home: https://docs.openstack.org/nova/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/nova.png
+    keywords:
+    - openstack
+    - compute
+    - nova
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: nova
+    sources:
+    - https://opendev.org/openstack/nova
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/nova-0.3.51/nova-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: compute
       krateo.io/maturity: stable
@@ -49524,6 +50245,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:12.036087882Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Octavia
+    digest: 1ab9c0602b2a274db08c87e0774640702aea0a0d2bd018eae1a7e7392f78866d
+    home: https://docs.openstack.org/octavia/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/octavia.png
+    keywords:
+    - openstack
+    - load-balancer
+    - octavia
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: octavia
+    sources:
+    - https://opendev.org/openstack/octavia
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/octavia-0.3.51/octavia-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: network
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:25.118787731Z"
     dependencies:
     - name: helm-toolkit
@@ -49968,6 +50719,29 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/octavia-0.2.0.tgz
     version: 0.2.0
   openstack:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:12.445435932Z"
+    description: Krateo umbrella that orchestrates the per-component OpenStack blueprints
+      into one ordered, readiness-gated installation.
+    digest: 528c2245676a9da861fe42e580c96cbb90b145b462487d789ce1142086d63f67
+    home: https://krateo.io
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - orchestrator
+    - umbrella
+    name: openstack
+    sources:
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/openstack-0.3.51/openstack-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -50583,6 +51357,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:12.859425081Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm OpenVSwitch
+    digest: c590749e3091e5563ee46907fb0ded42a0b6b6772e173675038a6561f9078dcb
+    home: http://openvswitch.org
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - networking
+    - openvswitch
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: openvswitch
+    sources:
+    - https://github.com/openvswitch/ovs
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/openvswitch-0.3.51/openvswitch-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: network
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:25.74673993Z"
     dependencies:
     - name: helm-toolkit
@@ -51027,6 +51831,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/openvswitch-0.2.0.tgz
     version: 0.2.0
   placement:
+  - annotations:
+      krateo.io/category: compute
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:13.291986583Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Placement
+    digest: e48e519dd0bcbab50ae78271be7809f564e0c8c66d83eae218897798e13040b1
+    home: https://docs.openstack.org/placement/latest/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - placement
+    - scheduling
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: placement
+    sources:
+    - https://opendev.org/openstack/placement
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/placement-0.3.51/placement-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: compute
       krateo.io/maturity: stable
@@ -51508,6 +52342,34 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: 4.9.18
+    created: "2026-11-13T11:39:13.706995706Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: PowerDNS Authoritative Server, designate's pool target
+    digest: adeeb9e6665c518b7dc8a6997e54c44b50e13e7d9482be4934d7a05552063e4e
+    home: https://www.powerdns.com/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - dns
+    - powerdns
+    - designate
+    name: powerdns
+    sources:
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    - https://github.com/PowerDNS/pdns
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/powerdns-0.3.51/powerdns-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: 4.9.18
     created: "2026-11-13T08:38:26.38909474Z"
     dependencies:
     - name: helm-toolkit
@@ -51895,6 +52757,34 @@ entries:
     - https://github.com/krateo-blueprints/charts/releases/download/powerdns-0.3.37/powerdns-0.3.37.tgz
     version: 0.3.37
   rabbitmq:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:14.130161687Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm RabbitMQ
+    digest: eaab3c8b8e55cd6f4021d4e966c5a5a152efbc413b42cd3e95278188d04c474f
+    home: https://github.com/rabbitmq/rabbitmq-server
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - messaging
+    - rabbitmq
+    name: rabbitmq
+    sources:
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    - https://github.com/rabbitmq/rabbitmq-server
+    - https://opendev.org/openstack/openstack-helm
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/rabbitmq-0.3.51/rabbitmq-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -52341,6 +53231,34 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/rancher-installer-0.1.0.tgz
     version: 0.1.0
   redis:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:14.536279573Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Redis
+    digest: 7c2626641020fcc1d349d6185d2760b9af35af294537c1ccfaf76e1ef7d21ff5
+    home: https://github.com/redis/redis
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - cache
+    - redis
+    - messaging
+    name: redis
+    sources:
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    - https://github.com/redis/redis
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/redis-0.3.51/redis-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -52861,6 +53779,37 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:14.955770143Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Skyline
+    digest: 5c37533eaf61ac5332b862acc99230578bac06992deec1600ba2c7b007d4fa3a
+    home: https://docs.openstack.org/skyline-apiserver/latest/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - openstack
+    - dashboard
+    - skyline
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: skyline
+    sources:
+    - https://opendev.org/openstack/skyline-apiserver
+    - https://opendev.org/openstack/skyline-console
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/skyline-0.3.51/skyline-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:27.353632858Z"
     dependencies:
     - name: helm-toolkit
@@ -53326,6 +54275,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:15.36250346Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: Openstack-Helm Swift
+    digest: 42d1baf2648f428ee5ba1c440c082e21d406924e1e4f88996ccde4e3598b5790
+    home: https://docs.openstack.org/swift/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/swift.png
+    keywords:
+    - openstack
+    - object-storage
+    - swift
+    maintainers:
+    - name: Openstack-Helm Authors
+    name: swift
+    sources:
+    - https://opendev.org/openstack/swift
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/swift-0.3.51/swift-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: storage
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:27.673921945Z"
     dependencies:
     - name: helm-toolkit
@@ -53770,6 +54749,36 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/swift-0.2.0.tgz
     version: 0.2.0
   tacker:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:15.782645845Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Tacker
+    digest: 2218ce33b51e840591ea2751c789b64569d4147115f0c7d22e7d1326277fcaaf
+    home: https://docs.openstack.org/tacker/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/tacker.png
+    keywords:
+    - openstack
+    - nfv
+    - tacker
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: tacker
+    sources:
+    - https://opendev.org/openstack/tacker
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/tacker-0.3.51/tacker-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: beta
@@ -54226,6 +55235,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:16.194264004Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Trove
+    digest: 634f2ad8edc7193d7b6677aa826cac8fe17f78e3279805c64132023a6fb3d505
+    home: https://docs.openstack.org/trove/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/trove.png
+    keywords:
+    - openstack
+    - database-as-a-service
+    - trove
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: trove
+    sources:
+    - https://opendev.org/openstack/trove
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/trove-0.3.51/trove-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: database
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:28.303141055Z"
     dependencies:
     - name: helm-toolkit
@@ -54676,6 +55715,36 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2025.1"
+    created: "2026-11-13T11:39:16.614017388Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack-Helm Watcher
+    digest: 9382ebbb19190e693d3f3f8212aef5414051a731f87216eeb5feeb9f5f5100b2
+    home: https://docs.openstack.org/watcher/latest/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/watcher.png
+    keywords:
+    - openstack
+    - optimization
+    - watcher
+    maintainers:
+    - name: OpenStack-Helm Authors
+    name: watcher
+    sources:
+    - https://opendev.org/openstack/watcher
+    - https://opendev.org/openstack/openstack-helm
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/watcher-0.3.51/watcher-0.3.51.tgz
+    version: 0.3.51
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
     created: "2026-11-13T08:38:28.616606269Z"
     dependencies:
     - name: helm-toolkit
@@ -55120,6 +56189,37 @@ entries:
     - https://krateo-blueprints.github.io/charts/blueprints/watcher-0.2.0.tgz
     version: 0.2.0
   zaqar:
+  - annotations:
+      krateo.io/category: application
+      krateo.io/maturity: stable
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2025.1"
+    created: "2026-11-13T11:39:17.051786409Z"
+    dependencies:
+    - name: helm-toolkit
+      repository: file://../../../charts/helm-toolkit
+      version: '>= 0.1.0'
+    description: OpenStack Messaging Service (Zaqar)
+    digest: 0028e8b59ab2a8d6377ced4340f19ad415c28a436f256750c9dd7ff3a0776552
+    home: https://docs.openstack.org/zaqar/
+    icon: https://raw.githubusercontent.com/krateo-blueprints/krateo-openstack-blueprint/main/docs/icons/zaqar.png
+    keywords:
+    - openstack
+    - messaging
+    - queue
+    - helm
+    maintainers:
+    - email: openstack-helm@lists.openstack.org
+      name: OpenStack-Helm Team
+    name: zaqar
+    sources:
+    - https://opendev.org/openstack/zaqar
+    - https://github.com/krateo-blueprints/krateo-openstack-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/zaqar-0.3.51/zaqar-0.3.51.tgz
+    version: 0.3.51
   - annotations:
       krateo.io/category: application
       krateo.io/maturity: stable
@@ -55584,4 +56684,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-13T08:38:28.924845121Z"
+generated: "2026-11-13T11:39:17.047636803Z"
