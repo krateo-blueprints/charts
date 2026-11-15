@@ -48,6 +48,42 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/acmpca-chart-1.3.1.tgz
     version: 1.3.1
+  agentgateway:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: 1.4.1
+    created: "2026-11-15T20:58:27.208389207Z"
+    dependencies:
+    - name: agentgateway-crds
+      repository: oci://ghcr.io/agentgateway/charts
+      version: 1.6.0
+    - name: agentgateway
+      repository: oci://ghcr.io/agentgateway/charts
+      version: 1.6.0
+    description: 'Krateo blueprint for the agentgateway edge: installs the upstream
+      agentgateway controller and renders the platform GatewayClass + Gateway that
+      per-component HTTPRoutes (installer exposure.type=Gateway), external-dns, and
+      cert-manager-issuers'' ACME gatewayRef attach to. Requires the Gateway API CRDs
+      (gateway-api-crds blueprint).'
+    digest: b4cba4a3f3163bb79c4b3f7e7003b53a6914eb375e970befb9714819045ad557
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - gateway
+    - agentgateway
+    name: agentgateway
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    - https://github.com/agentgateway/agentgateway
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/agentgateway-0.17.0/agentgateway-0.17.0.tgz
+    version: 0.17.0
   apigateway-chart:
   - apiVersion: v1
     appVersion: 1.6.1
@@ -731,6 +767,64 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/bedrockagentcorecontrol-chart-1.9.1.tgz
     version: 1.9.1
+  cert-manager:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: v1.21.1
+    created: "2026-11-15T20:58:27.291466788Z"
+    dependencies:
+    - name: cert-manager
+      repository: https://charts.jetstack.io
+      version: v1.21.1
+    description: Krateo blueprint that installs upstream cert-manager (operator +
+      CRDs). Ships no Issuers or Certificates of its own — those live in the cert-manager-issuers
+      blueprint, which depends on this one.
+    digest: 564151b4205e31cf8e62046a6fca2ef1f1036b1cdaa40ff208591c86a4fe3e32
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - tls
+    - cert-manager
+    name: cert-manager
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    - https://github.com/cert-manager/cert-manager
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cert-manager-0.17.0/cert-manager-0.17.0.tgz
+    version: 0.17.0
+  cert-manager-issuers:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: v1.21.1
+    created: "2026-11-15T20:58:27.37827942Z"
+    description: 'Krateo blueprint for the platform''s cert-manager ClusterIssuers:
+      an internal self-signed CA chain and, optionally, a public ACME issuer solving
+      HTTP-01 through the Gateway API edge. Requires cert-manager to be installed
+      first (the cert-manager blueprint); it deliberately does NOT install it.'
+    digest: 320727d941cc18ae4a8c51e572830c167c3b40bfbc247db30cedf8d9d1e26cc1
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - tls
+    - cert-manager
+    name: cert-manager-issuers
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cert-manager-issuers-0.17.0/cert-manager-issuers-0.17.0.tgz
+    version: 0.17.0
   child-parent-sso:
   - apiVersion: v2
     created: "2026-11-15T08:45:05.086779318Z"
@@ -1401,6 +1495,37 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/eventbridge-chart-1.3.2.tgz
     version: 1.3.2
+  external-dns:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: 0.21.1
+    created: "2026-11-15T20:58:27.458635443Z"
+    dependencies:
+    - name: external-dns
+      repository: https://kubernetes-sigs.github.io/external-dns/
+      version: 1.21.1
+    description: Krateo blueprint for ExternalDNS — publishes DNS records for Gateway
+      API and Service/Ingress resources to an external provider. Depends on the upstream
+      chart; exposes only the surface a platform operator should set.
+    digest: e9d17859f3cbe61981fbdea2dfaa4ffdc80a1a5e55744d92c27911cec00c36df
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - dns
+    - ingress
+    name: external-dns
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    - https://github.com/kubernetes-sigs/external-dns
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/external-dns-0.17.0/external-dns-0.17.0.tgz
+    version: 0.17.0
   firehose-chart:
   - apiVersion: v1
     appVersion: 0.3.1
@@ -1425,6 +1550,35 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/firehose-chart-0.3.1.tgz
     version: 0.3.1
+  gateway-api-crds:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: v1.3.0
+    created: "2026-11-15T20:58:27.539947984Z"
+    description: Krateo blueprint shipping the upstream Kubernetes Gateway API standard
+      CRDs (GatewayClass, Gateway, HTTPRoute, ReferenceGrant, GRPCRoute). Shared edge
+      infrastructure that the agentgateway blueprint, the installer's exposure.type=Gateway
+      HTTPRoutes, and cert-manager-issuers' ACME gatewayRef all require. Bundle-version
+      v1.3.0, standard channel.
+    digest: 9937065c8976d4d015b045cabbd7054029ecf9579234ba85776135c4017c59a4
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - gateway-api
+    - crds
+    name: gateway-api-crds
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    - https://github.com/kubernetes-sigs/gateway-api
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/gateway-api-crds-0.17.0/gateway-api-crds-0.17.0.tgz
+    version: 0.17.0
   github-provider-kog:
   - annotations:
       org.opencontainers.image.ref.name: 0.13.0
@@ -1882,6 +2036,33 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/iam-chart-1.7.2.tgz
     version: 1.7.2
+  internal-ca-bundle:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: v0.20.0
+    created: "2026-11-15T20:58:27.621079641Z"
+    description: Krateo blueprint distributing the platform's internal CA certificate
+      (from cert-manager-issuers) to the namespaces whose workloads must trust it,
+      as a trust-manager Bundle. Renders only the Bundle. Requires trust-manager to
+      be installed first; it deliberately does NOT install it.
+    digest: 2d6a18ad40f18dba8732b07bd2c61ba3d3a3d506683b4b9ff3350d5fb1289a55
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - tls
+    - trust-manager
+    name: internal-ca-bundle
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/internal-ca-bundle-0.17.0/internal-ca-bundle-0.17.0.tgz
+    version: 0.17.0
   kafka-chart:
   - apiVersion: v1
     appVersion: 1.8.0
@@ -3530,6 +3711,38 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/ssm-chart-1.4.2.tgz
     version: 1.4.2
+  trust-manager:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.17.0
+      org.opencontainers.image.revision: 8925b1c8b6e3ed783d86d2482b62e60ac27a9b06
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/ingress-blueprint
+      org.opencontainers.image.version: 0.17.0
+    apiVersion: v2
+    appVersion: v0.20.0
+    created: "2026-11-15T20:58:27.700095684Z"
+    dependencies:
+    - name: trust-manager
+      repository: https://charts.jetstack.io
+      version: v0.20.0
+    description: 'Krateo blueprint that installs upstream trust-manager (operator,
+      Bundle CRD and its admission webhook). Ships no Bundle of its own: internal-ca-bundle
+      renders the platform''s Bundle once trust-manager''s API is served.'
+    digest: da4a8f0f389f3efbcc32d4b0722daa39a40c1f9ab2426e5e27542da555ef171a
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - platformops
+    - tls
+    - trust-manager
+    - cert-manager
+    name: trust-manager
+    sources:
+    - https://github.com/krateo-blueprints/ingress-blueprint
+    - https://github.com/cert-manager/trust-manager
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/trust-manager-0.17.0/trust-manager-0.17.0.tgz
+    version: 0.17.0
   wafv2-chart:
   - apiVersion: v1
     appVersion: 1.4.2
@@ -3554,4 +3767,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-15T20:13:26.001748831Z"
+generated: "2026-11-15T20:58:27.698527041Z"
