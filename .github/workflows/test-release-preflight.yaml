@@ -1,0 +1,67 @@
+name: test-release-preflight
+
+# Self-test for the reusable release-preflight.yaml.
+#
+#   - hook-semantics: runs the workflow's own hook step against every fixture under
+#     test/release-preflight/ and checks each exit code. That covers no script (passes), passing
+#     script, the version arriving as $1, empty version, failing script, non-executable script and
+#     dangling link. A failing case can't run as a failing job here without turning this
+#     repository's CI red, so refusals are checked at the step.
+#   - call-passes / call-absent: real calls through `uses:`, which prove the wiring (checkout,
+#     inputs, working-directory).
+#   - publish-after-preflight: `needs:` both calls, the shape PUBLISHING.md rule 12 asks of a
+#     caller's publishing job.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/release-preflight.yaml
+      - .github/workflows/test-release-preflight.yaml
+      - test/release-preflight/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/release-preflight.yaml
+      - .github/workflows/test-release-preflight.yaml
+      - test/release-preflight/**
+
+permissions:
+  contents: read
+
+jobs:
+  hook-semantics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Every fixture gets the exit code it should
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          /tmp/venv/bin/python test/release-preflight/run-cases.py
+
+  call-passes:
+    uses: ./.github/workflows/release-preflight.yaml
+    with:
+      version: "9.8.7"
+      working-directory: test/release-preflight/passes
+
+  call-absent:
+    uses: ./.github/workflows/release-preflight.yaml
+    with:
+      version: "9.8.7"
+      working-directory: test/release-preflight/absent
+
+  publish-after-preflight:
+    needs:
+      - call-passes
+      - call-absent
+    runs-on: ubuntu-latest
+    steps:
+      - name: Reached only because every preflight passed
+        run: echo "a caller's publishing job would run here"

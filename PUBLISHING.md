@@ -192,6 +192,36 @@ No release reported any of this.
     - **a manifest published beside the CompositionDefinition**, for manual registration.
       krateo-openstack-blueprint's `portal-visibility-rbac.yaml` is an example.
 
+12. **A release runs the repository's own preflight before it publishes anything.** Some
+    preconditions only the repository can state, such as a fixture in `examples/` that names the
+    version being released, which nothing stamps. Written as a comment, such a precondition gets
+    missed: openstack-neutron-operator-kog's example Composition named `v0-1-0` through 0.1.1. So:
+    - **The hook:** a repository that has such a precondition ships it as an executable
+      `hack/release-preflight`. It receives the version being released as `$1`, and a non-zero exit
+      refuses the release.
+    - **The call:** every release calls this repository's reusable `release-preflight.yaml` as a job
+      of its own, pinned like the publisher (rule 9). The job that pushes to GHCR declares `needs:`
+      on it, so every later step does too. A refusal then stamps, pushes, indexes and releases
+      nothing, and needs no new version number.
+    - **Repositories without the hook:** the job passes and says so, so every repository can call it
+      unconditionally.
+    - **A hook that can't run:** a `hack/release-preflight` that exists but is not an executable
+      file fails the job. A lost executable bit would otherwise skip the guard exactly when it was
+      meant to run.
+    - **What the hook gets:** the caller's checkout at the commit that triggered the release, read-only
+      contents permission, no secrets.
+
+    ```yaml
+      preflight:
+        uses: krateo-blueprints/charts/.github/workflows/release-preflight.yaml@<sha> # 1.1.0
+        with:
+          version: ${{ github.ref_name }}
+
+      release:
+        needs:
+          - preflight   # and the token check (rule 7)
+    ```
+
 ## Scope
 
 This standard covers every repository in the krateo-blueprints organisation. builder-scaffold also
@@ -229,5 +259,5 @@ only when `github.repository_owner` is `krateo-blueprints`.
 ```
 
 krateo-blueprints/krateo-openstack-blueprint's `release-tag.yaml` is a complete caller covering
-rules 1 to 4 and 10: placeholder stamping, the CompositionDefinition copied into each chart, archive
+rules 1 to 4 and 10 (rule 12's preflight job is to be added there once `release-preflight.yaml` is tagged): placeholder stamping, the CompositionDefinition copied into each chart, archive
 assertions, a lint check and the call.
