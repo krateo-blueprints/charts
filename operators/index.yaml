@@ -1304,6 +1304,36 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/cloudfront-chart-1.5.1.tgz
     version: 1.5.1
+  cloudnative-pg:
+  - annotations:
+      org.opencontainers.image.ref.name: 0.29.1
+      org.opencontainers.image.revision: 9ab5a1d367006f421798ebc62a04ea1d85c93d38
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/cloudnative-pg-blueprint
+      org.opencontainers.image.version: 0.29.1
+    apiVersion: v2
+    appVersion: 1.30.1
+    created: "2026-11-17T12:46:59.300800552Z"
+    dependencies:
+    - name: cloudnative-pg
+      repository: oci://ghcr.io/cloudnative-pg/charts
+      version: 0.29.1
+    digest: e39967032f06d950c742454083795fe66f858d44ce5177cc87fe53c5104a277d
+    home: https://github.com/krateo-blueprints/cloudnative-pg-blueprint
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - postgresql
+    - database
+    - operator
+    maintainers:
+    - name: krateo
+    name: cloudnative-pg
+    sources:
+    - https://github.com/krateo-blueprints/cloudnative-pg-blueprint
+    - https://github.com/cloudnative-pg/charts
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/cloudnative-pg-0.29.1/cloudnative-pg-0.29.1.tgz
+    version: 0.29.1
   cloudtrail-chart:
   - apiVersion: v1
     appVersion: 1.3.1
@@ -4315,4 +4345,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-17T12:46:51.159029703Z"
+generated: "2026-11-17T12:46:59.293868005Z"
