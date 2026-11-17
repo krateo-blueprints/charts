@@ -3234,6 +3234,35 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/krateo-sse-proxy-0.1.4.tgz
     version: 0.1.4
+  kyverno:
+  - annotations:
+      org.opencontainers.image.ref.name: 3.9.2
+      org.opencontainers.image.revision: 9c47e7f5f42c0bf8d066d317637cbab55c4fa514
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/kyverno-blueprint
+      org.opencontainers.image.version: 3.9.2
+    apiVersion: v2
+    created: "2026-11-17T12:46:42.287831017Z"
+    dependencies:
+    - name: kyverno
+      repository: oci://ghcr.io/kyverno/charts
+      version: 3.9.2
+    digest: eff62c0a332fede5d262a18b225668dc4fe0e44431c5f35a07fa5ca498636be0
+    home: https://github.com/krateo-blueprints/kyverno-blueprint
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - policy
+    - admission-control
+    - operator
+    maintainers:
+    - name: krateo
+    name: kyverno
+    sources:
+    - https://github.com/krateo-blueprints/kyverno-blueprint
+    - https://github.com/kyverno/kyverno
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/kyverno-3.9.2/kyverno-3.9.2.tgz
+    version: 3.9.2
   lambda-chart:
   - apiVersion: v1
     appVersion: 1.14.0
@@ -4256,4 +4285,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-17T06:02:58.663936654Z"
+generated: "2026-11-17T12:46:42.249781379Z"
