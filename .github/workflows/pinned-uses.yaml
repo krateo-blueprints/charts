@@ -20,7 +20,9 @@ name: pinned-uses
 #     is transitional: a repository on this form is waiting on its publisher to tag, and moves to
 #     `# X.Y.Z` when it does. krateo-platformops/.github tagged 1.0.0 on 2026-11-18 (charts#23), so
 #     the preferred form for it is now `# 1.0.0`. A dated pin into it still passes, but is printed as
-#     a notice and counted in the summary. Without a comment nobody can tell what is pinned or whether
+#     a notice and counted in the summary. Resolve an annotated tag with `^{}` when pinning and when
+#     reviewing a pin: refs/tags/X.Y.Z is the tag object, not the commit, and comparing a correct pin
+#     against it shows a false mismatch. Without a comment nobody can tell what is pinned or whether
 #     it is stale.
 # Inside a shared reusable (a file with `on: workflow_call`) the same holds for what it calls, and a float is refused
 # there: a caller that pins the reusable freezes only the reusable's own text, so a `@main` inside it would still move
@@ -327,7 +329,7 @@ jobs:
                       pushes.append("%s:%d: a bare `%s push` in a script; run it through %s (locate mode: `bash \"${CHART_PUSH}\" <tgz> <oci repo>` with CHART_PUSH from the action's path output), which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, bp.group(2), CHART_PUSH_ACTION))
           # END script-scan
           for where in dated_tagged:
-              print("::notice title=dated pin into a tagged repository::%s is pinned with `# main YYYY-MM-DD`; krateo-platformops/.github publishes tags since 1.0.0 (charts#23), so pin `# X.Y.Z` (the same commit if it carries a tag) and let Dependabot advance it" % where)
+              print("::notice title=dated pin into a tagged repository::%s is pinned with `# main YYYY-MM-DD`. That form is for a publisher with no tags; Dependabot cannot advance such a pin, so it is transitional, and a repository on it is waiting on its publisher to tag. krateo-platformops/.github is tagged from 1.0.0 (charts#23), so pin `# 1.0.0` (or a later `# X.Y.Z`); resolve the tag with `^{}` (git ls-remote <repo> 'refs/tags/X.Y.Z^{}') when pinning and when reviewing, since refs/tags/X.Y.Z is the annotated tag object, not the commit" % where)
           for where, date, reason in floats:
               print("::notice title=floating reusable workflow::%s floats since %s, reason: %s" % (where, date, reason))
           for b in bad + inherits + pushes:
