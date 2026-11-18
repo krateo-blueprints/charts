@@ -8,7 +8,8 @@ runs it in a caller's checkout.
 Then the mutations. The script carries marked blocks: `sha-check`, `comment-check` and, inside it,
 `float-form` (the float as a first-class comment form), `inherit-check`, `float-accept` (which accepts a
 recorded float) and, inside it, the refusals `float-date`, `float-reason`, `float-owner`, `float-publisher`,
-`float-sha` and `float-branch`. Each is deleted in turn, and the cases that block exists for must flip to the
+`float-sha` and `float-branch`; and for rule 14, `action-scope` (the shared chart-push action is checked),
+`action-sha`, `action-comment`, `bare-push` and `push-comment` (a commented line is not a push). Each is deleted in turn, and the cases that block exists for must flip to the
 opposite verdict: a refused case to passing, an accepted float to refused. Where a case names the reason the
 mutant must be caught for (`mutant_text`), the mutant's output must say it. A case whose verdict a mutant
 leaves unchanged is decided by something else, so it would prove nothing about that block, and this fails.
@@ -31,7 +32,7 @@ import tempfile
 import yaml
 
 WORKFLOW = ".github/workflows/pinned-uses.yaml"
-STEP = "Every reusable workflow is pinned by commit SHA with a version comment, and gets no cross-org secrets inherit"
+STEP = "Every reusable workflow and shared action is pinned by commit SHA with a version comment, no cross-org secrets inherit, no bare chart push"
 SHA = "788f1a6c106707ada89792f499afdcf3bc0b5d13"
 RW = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
 CALLER = "krateo-blueprints/example"
@@ -153,6 +154,115 @@ CASES += [
      "0 not pinned (PUBLISHING.md rule 9), 1 floating, 1 cross-org secrets inherit", "inherit-check"),
 ]
 
+# PUBLISHING.md rule 14: the shared chart-push action is pinned like a reusable (`# X.Y.Z`, or `# main YYYY-MM-DD` while
+# krateo-platformops/.github is untagged), never floated, and no workflow pushes a chart bare.
+ACT = "krateo-platformops/.github/.github/actions/chart-push"
+
+
+def steps(*lines):
+    # A job whose steps are the given lines, each already a full step line without indentation.
+    return "on: push\njobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n" + "".join("      %s\n" % l for l in lines)
+
+
+def run_block(*body):
+    # One step whose `run: |` block holds the given shell lines.
+    return steps("- name: release", "  run: |") .replace("  run: |\n", "  run: |\n" + "".join("          %s\n" % l for l in body))
+
+
+ACT_USE = "- uses: %s@%s # main 2026-11-18" % (ACT, SHA)
+PUSH_ERR = "push charts through krateo-platformops/.github/.github/actions/chart-push"
+CASES += [
+    # the shared action is in scope, pinned like a reusable: dated while its repository is untagged, or a tag
+    ("shared action pinned, dated", {"a.yaml": steps(ACT_USE, "  with:", "    chart: dist/demo-0.1.0.tgz")}, True,
+     "0 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 floating, 0 cross-org secrets inherit, 1 shared-action uses, 0 bare chart push(es)", None),
+    ("shared action pinned, tagged", {"a.yaml": steps("- uses: %s@%s # 1.0.0" % (ACT, SHA))}, True, "1 shared-action uses, 0 bare", None),
+    ("shared action, quoted", {"a.yaml": steps('- uses: "%s@%s" # main 2026-11-18' % (ACT, SHA))}, True, "1 shared-action uses", None),
+    # release-oci.yaml's call today: refused by the ref and by the missing comment, so neither deletion alone flips it.
+    ("shared action at main, as release-oci", {"a.yaml": steps("- uses: %s@main" % ACT)}, False,
+     "not a 40-hex commit SHA; the shared chart-push action is always pinned by commit", None),
+    ("shared action at main, dated comment", {"a.yaml": steps("- uses: %s@main # main 2026-11-17" % ACT)}, False,
+     "not a 40-hex commit SHA; the shared chart-push action is always pinned by commit", "action-sha"),
+    ("shared action tag ref", {"a.yaml": steps("- uses: %s@1.0.0 # 1.0.0" % ACT)}, False, "is pinned to '1.0.0'", "action-sha"),
+    ("shared action abbreviated sha", {"a.yaml": steps("- uses: %s@f25d6b5 # main 2026-11-17" % ACT)}, False, "1 shared-action uses", "action-scope"),
+    ("shared action, owner case", {"a.yaml": steps("- uses: Krateo-Platformops/.GitHub/.github/actions/chart-push@main # main 2026-11-17")}, False,
+     "1 not pinned", "action-scope"),
+    ("shared action, no comment", {"a.yaml": steps("- uses: %s@%s" % (ACT, SHA))}, False, "needs `# X.Y.Z`, or `# main YYYY-MM-DD`", "action-comment"),
+    ("shared action, comment not a version", {"a.yaml": steps("- uses: %s@%s # latest" % (ACT, SHA))}, False,
+     "has comment 'latest'", "action-comment"),
+    ("shared action, float on a sha", {"a.yaml": steps("- uses: %s@%s # floating: 2026-11-18 follow main" % (ACT, SHA))}, False,
+     "and is never floated", "action-comment"),
+    # Refused by both the ref and the comment, so neither deletion alone flips it.
+    ("shared action floated", {"a.yaml": steps("- uses: %s@main # floating: 2026-11-18 follow main" % ACT)}, False,
+     "never floated (PUBLISHING.md rule 14)", None),
+    # Out of scope: another action of the same repository, a name that only starts the same, another owner's.
+    ("same repo, another action", {"a.yaml": steps("- uses: krateo-platformops/.github/.github/actions/chart-version-guard@main")}, True,
+     "0 shared-action uses", None),
+    ("a longer name, out of scope", {"a.yaml": steps("- uses: krateo-platformops/.github/.github/actions/chart-push-extra@main")}, True,
+     "0 shared-action uses", None),
+    ("another org action, out of scope", {"a.yaml": steps("- uses: krateo-blueprints/actions/.github/actions/chart-push@main")}, True,
+     "0 shared-action uses", None),
+    # bare pushes
+    ("bare helm push, run line", {"a.yaml": steps("- run: helm push dist/demo-0.1.0.tgz oci://ghcr.io/krateo-blueprints/charts")}, False,
+     "a.yaml:6: a bare `helm push`; " + PUSH_ERR, "bare-push"),
+    ("bare helm push, in a loop", {"a.yaml": run_block("for f in dist/*.tgz; do", '  helm push "$f" oci://ghcr.io/krateo-blueprints/charts', "done")}, False,
+     "1 bare chart push(es)", "bare-push"),
+    ("bare helm push after &&", {"a.yaml": run_block("helm package charts/demo -d dist && helm push dist/*.tgz oci://ghcr.io/krateo-blueprints/charts")}, False,
+     "a bare `helm push`", "bare-push"),
+    ("bare helm push, extra spaces", {"a.yaml": run_block("helm  push dist/demo-0.1.0.tgz oci://ghcr.io/krateo-blueprints/charts")}, False,
+     "a bare `helm push`", "bare-push"),
+    ("bare oras push", {"a.yaml": run_block("oras push ghcr.io/krateo-blueprints/charts/demo:0.1.0 demo-0.1.0.tgz")}, False,
+     "a bare `oras push`", "bare-push"),
+    ("bare push among clean files", {"a.yaml": steps(ACT_USE), "b.yml": run_block("helm push x.tgz oci://r/p")}, False,
+     "1 shared-action uses, 1 bare chart push(es)", "bare-push"),
+    # a pinned reusable does not excuse a bare push in the same file
+    ("bare push beside a good pin", {"a.yaml": job("uses: %s@%s # 1.1.0" % (RW, SHA)) + "  y:\n    runs-on: ubuntu-latest\n    steps:\n      - run: helm push x.tgz oci://r/p\n"}, False,
+     "0 not pinned (PUBLISHING.md rule 9), 0 floating, 0 cross-org secrets inherit, 0 shared-action uses, 1 bare chart push(es)", "bare-push"),
+    # commented pushes are not pushes
+    ("commented helm push, YAML", {"a.yaml": steps("# - run: helm push dist/demo-0.1.0.tgz oci://ghcr.io/krateo-blueprints/charts", ACT_USE)}, True,
+     "0 bare chart push(es)", "push-comment"),
+    ("commented helm push, shell", {"a.yaml": run_block("# was: helm push \"$f\" oci://ghcr.io/krateo-blueprints/charts", "echo done")}, True,
+     "0 bare chart push(es)", "push-comment"),
+    ("commented oras push", {"a.yaml": run_block("  # oras push ghcr.io/x/y:1 a.tgz", "true")}, True, "0 bare chart push(es)", "push-comment"),
+    # not a push
+    ("helm package and pull", {"a.yaml": run_block("helm package charts/demo -d dist", "helm pull oci://ghcr.io/krateo-blueprints/charts/demo --version 0.1.0")}, True,
+     "0 bare chart push(es)", None),
+    ("helm-push as part of a word", {"a.yaml": run_block("helm cm-push dist/demo.tgz museum", "echo myhelm push-it", "echo helm pushes")}, True,
+     "0 bare chart push(es)", None),
+    # Locate mode, as release-oci.yaml and multi-chart loops use it: the pinned action outputs push.sh's path, a loop runs it.
+    ("locate mode, then bash \"$path\"", {"a.yaml": steps("- name: Locate the shared chart push", "  id: chart-push", "  uses: %s@%s # main 2026-11-18" % (ACT, SHA),
+                                                         "- name: Push every chart", "  env:", "    CHART_PUSH: ${{ steps.chart-push.outputs.path }}", "  run: |",
+                                                         "    for tgz in dist/*.tgz; do", '      bash "${CHART_PUSH}" "$tgz" oci://ghcr.io/krateo-blueprints/charts', "    done")}, True,
+     "1 shared-action uses, 0 bare chart push(es)", None),
+    ("push through the action", {"a.yaml": steps("- name: Push the chart", "  id: push", "  uses: %s@%s # main 2026-11-18" % (ACT, SHA), "  with:", "    chart: dist/demo-0.1.0.tgz", "    repository: oci://ghcr.io/krateo-blueprints/charts")}, True,
+     "1 shared-action uses, 0 bare chart push(es)", None),
+]
+
+# PUBLISHING.md rule 9 inside shared reusables: a reusable (on: workflow_call) in this repository calling a sibling.
+SIB = "krateo-blueprints/charts/.github/workflows/release-preflight.yaml"
+
+
+def reusable(*job_lines):
+    return "on:\n  workflow_call:\njobs:\n  x:\n" + "".join("    %s\n" % l for l in job_lines)
+
+
+CASES += [
+    ("reusable calls a sibling @main", {"publish-chart.yaml": reusable("uses: %s@main # 1.3.0" % SIB)}, False,
+     "publish-chart.yaml:5: %s@main is pinned to 'main', not a 40-hex commit SHA" % SIB, "sha-check"),
+    ("reusable floats a sibling", {"publish-chart.yaml": reusable("uses: %s@main # floating: 2026-11-18 follow main" % SIB)}, False,
+     "floats inside a reusable workflow (on: workflow_call)", "float-reusable"),
+    ("reusable floats, reason above", {"publish-chart.yaml": "on:\n  workflow_call:\njobs:\n  x:\n    # follow the sibling\n    uses: %s@main # floating: 2026-11-18\n" % SIB}, False,
+     "floats inside a reusable workflow", "float-reusable"),
+    ("reusable pins a sibling", {"publish-chart.yaml": reusable("uses: %s@%s # 1.3.0" % (SIB, SHA))}, True,
+     "1 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 floating", None),
+    ("reusable with chart-push @main", {"publish-chart.yaml": "on:\n  workflow_call:\njobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s@main\n" % ACT}, False,
+     "the shared chart-push action is always pinned by commit", None),
+    # The same float outside a reusable is still a recorded float (nova-kog's callers): only reusables lose the exemption.
+    ("caller floats a sibling", {"lint.yaml": "on: push\njobs:\n  x:\n    uses: %s@main # floating: 2026-11-18 follow main\n" % SIB}, True,
+     "1 floating", None),
+    ("workflow_call only in a comment", {"lint.yaml": "on: push\n# not on: workflow_call:\njobs:\n  x:\n    uses: %s@main # floating: 2026-11-18 follow main\n" % SIB}, True,
+     "1 floating", None),
+]
+
 NAIVE_BODY = """owner = target.split("/", 1)[0].lower()
 if owner != caller_owner and "secrets: inherit" in "\\n".join(lines):
     inherits.append("%s: naive text search found secrets: inherit" % where)"""
@@ -219,7 +329,8 @@ def main():
         if not good:
             print("      output: " + out.strip().replace("\n", "\n              "))
     blocks = ("sha-check", "comment-check", "float-form", "inherit-check", "float-accept",
-              "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch")
+              "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch",
+              "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable")
     for block in blocks:
         mutant = without(script, block)
         for case in CASES:

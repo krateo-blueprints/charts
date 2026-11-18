@@ -23,7 +23,7 @@ before 2026-11-07 keep their original URLs, so no existing release asset may be 
 - GitHub **Releases** of this repository: the tarball store, one release per `<name>-<version>`.
 - **`main`**: `.github/workflows/publish-chart.yaml`, the reusable publisher. Callers pin a full commit SHA with its `# 1.x.y` version comment, upgraded by Dependabot (PUBLISHING.md rule 9).
 - **`main`**: `.github/workflows/release-preflight.yaml`, the reusable pre-publish hook: it runs a caller's executable `hack/release-preflight <version>` if there is one, and a caller's publishing job `needs:` it (PUBLISHING.md rule 12). Self-tested by `test-release-preflight.yaml`.
-- **`main`**: `.github/workflows/pinned-uses.yaml`, the reusable rule-9 check: every non-local reusable-workflow `uses:` in a caller is pinned to a 40-hex commit with a `# X.Y.Z` (or `# main YYYY-MM-DD`) comment. Callers run it from their lint, pinned the same way. Self-tested by `test-pinned-uses.yaml`.
+- **`main`**: `.github/workflows/pinned-uses.yaml`, the reusable rule-9 check: every non-local reusable-workflow `uses:` in a caller is pinned to a 40-hex commit with a `# X.Y.Z` (or `# main YYYY-MM-DD`) comment. It also checks rule 14: the shared chart-push action (krateo-platformops/.github) is pinned by commit SHA with a version comment, and no workflow runs a bare `helm push` or `oras push`. Callers run it from their lint, pinned the same way. Self-tested by `test-pinned-uses.yaml`.
 - **`main`**: `.github/workflows/test-publish-chart.yaml` runs the publisher's content gate against archives it packages, including the pre-releases rule 13 refuses.
 
 There is no reindex workflow. The old one rebuilt both indexes from the tarballs on gh-pages only,

@@ -18,6 +18,20 @@ name: test-pinned-uses
 #     the stated reason where the case names one (dropping float-form must produce the comment-format
 #     error). Every block has at least one such case. Last, it swaps inherit-check for a plain text
 #     search and requires that to refuse the mention cases, which it did to real callers.
+#     For rule 14: the shared chart-push action (krateo-platformops/.github) pinned with `# main
+#     YYYY-MM-DD` or `# X.Y.Z`, quoted, passes; `@main` (release-oci.yaml's call today), a tag, an
+#     abbreviated SHA, an owner in another case, no comment, a non-version comment, a float on a SHA and
+#     a floated branch are refused; another action of that repository, a longer name and another
+#     owner's chart-push stay out of scope. A
+#     bare `helm push` (a run line, in a loop, after `&&`, with extra spaces, among clean files, beside a
+#     good pin) and a bare `oras push` are refused; a commented one (YAML, shell, indented) is not, and
+#     `helm package`, `helm pull`, `helm cm-push` and words containing push are not pushes. The blocks
+#     action-scope, action-sha, action-comment, bare-push and push-comment are deleted in turn like the
+#     others. Locate mode (the pinned action, then `bash "${CHART_PUSH}"` in a loop) passes.
+#     Rule 9 inside shared reusables: a reusable (on: workflow_call) calling a sibling at @main is
+#     refused, and so is a recorded float there (block float-reusable), inline or with the reason above;
+#     a pinned sibling passes; the same float in a non-reusable, or with workflow_call only in a
+#     comment, is still accepted.
 #   - this-repository: a real call through `uses:`, on this repository's own workflows, which rule 9
 #     covers like any caller's.
 
