@@ -177,10 +177,45 @@ No release reported any of this.
    - **The comment:** `# X.Y.Z`, the tag that commit carries. A repository that publishes no tags yet
      (krateo-platformops/.github, as of 2026-11-18) is pinned to a commit on its `main` with the comment
      `# main YYYY-MM-DD`, the date of that commit, until it tags its workflows. Then callers move to
-     `# X.Y.Z`.
+     `# X.Y.Z`. The dated form is **transitional**: krateo-platformops/.github will start tagging
+     (#23), and the dated pins are then replaced, not kept as a second way to pin.
+   - **A deliberate float is recorded at the line, dated, with its reason.** A repository may choose
+     to follow an org-owned reusable workflow's branch instead of a commit. It says so where it
+     happens, either inline:
+
+     ```yaml
+         uses: krateo-platformops/.github/.github/workflows/security.yml@main # floating: 2026-11-07 <reason>
+     ```
+
+     or, for a rationale longer than a line, with the marker alone and the reason as the comment block
+     immediately above the `uses:` line, inside the same job, with no blank line between:
+
+     ```yaml
+         # <reason, as many lines as it needs>
+         uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating: 2026-11-07
+     ```
+
+     `pinned-uses.yaml` treats this as a third comment form, beside `# X.Y.Z` and `# main YYYY-MM-DD`,
+     and accepts it only when what it can verify holds. It refuses:
+     - a missing or impossible date (the date makes a float's age visible);
+     - no reason, inline or in the block above;
+     - an owner outside the org-owned list (`krateo-platformops`, `krateo-blueprints`), since nobody
+       floats code someone else controls;
+     - the publisher, `krateo-blueprints/charts/.github/workflows/publish-chart.yaml`, which receives
+       `CHARTS_PUBLISH_TOKEN` and is always pinned;
+     - `floating` on a 40-hex pin, which is meaningless;
+     - a tag or an abbreviated SHA. With no network lookup, a ref that looks like a version (`1`,
+       `1.1.0`, `v7`) or is 7 to 39 hex characters reads as one, so a branch named like that is
+       refused.
+
+     Each accepted float is printed with its file, line, date and reason. The summary line always
+     reads `P not pinned, F floating, I cross-org secrets inherit`, so a float is never hidden behind
+     a bare "0 not pinned". A float gets no Dependabot pull request, by definition: it moves whenever
+     the branch does. (Diego, for openstack-nova-operator-kog, 2026-11-07, reaffirmed 2026-11-18:
+     nova floats its krateo-platformops/.github workflows at `main`; the publisher stays pinned.)
    - **Enforced, not described:** every repository calls `pinned-uses.yaml` from its lint, pinned the
      same way. It refuses any non-local `uses:` of a reusable workflow whose ref is not 40 hex
-     characters with one of those two comments:
+     characters with one of those two comments, unless it is a recorded float as above:
 
      ```yaml
        pinned-uses:
@@ -190,6 +225,14 @@ No release reported any of this.
      Local workflows (`./...`) move with the caller's own commit and are not checked. Actions
      (`owner/repo@ref`, such as `actions/checkout`) are out of this rule's scope (#20, decided
      2026-11-18).
+   - **Secrets cross organisations by name, never by `inherit`.** `secrets: inherit` passes nothing
+     to a reusable workflow owned by another organisation, and nothing reports it: the called
+     workflow reads each secret as empty. krateo-platformops/.github's `release-notes.yaml` then
+     skips every step and reports success, so openstack-keystone-operator-kog 0.4.1 and 0.4.2
+     shipped without notes while the org secret was set (openstack-keystone-operator-kog#33,
+     krateo-platformops/.github#57). Pass each secret the reusable declares under `secrets:` by name.
+     `pinned-uses.yaml` refuses an uncommented `secrets: inherit` on any `uses:` whose owner is not
+     the caller's; a comment that mentions it is fine, and so is `inherit` within one organisation.
    - **Releases here:** tags are plain semver with no `v` prefix (the organisation's convention), and
      each release is cut as a tag such as `1.0.0` on `main`.
    - **Pin the commit, not the tag object.** Release tags are annotated, so `git ls-remote` on

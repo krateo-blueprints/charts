@@ -4,9 +4,20 @@ name: test-pinned-uses
 #
 #   - cases: runs the workflow's own check step against generated workflow files: pinned with a version,
 #     pinned with a dated comment, quoted, local, an action, a branch, a tag, an abbreviated SHA, no
-#     comment, a non-version comment, one bad file among good ones, and no workflow files at all. Then
-#     it deletes each marked block (sha-check, comment-check) and requires the cases that block exists
-#     for to pass, so each case is shown to test what it claims to.
+#     comment, a non-version comment, one bad file among good ones, and no workflow files at all; and
+#     for `secrets: inherit`: cross-org (plain, with a trailing comment, before `uses:`, quoted) is
+#     refused; same-org, named secrets, a mention in a comment, a commented-out key, an inherit in
+#     another job and a nested `secrets:` key pass; an empty caller fails; and for a recorded float
+#     (`# floating: YYYY-MM-DD <reason>`): an inline reason and a reason in the comment block above
+#     pass and are printed with date and reason, with no comment-format error; a missing, impossible
+#     or non-ISO date, no reason (no block, a block of bare `#`, a blank line before `uses:`, a
+#     comment outside the job), a foreign owner, the publisher, a SHA pin, a tag, a v-tag and an
+#     abbreviated SHA are refused. Then it deletes each marked block (sha-check, comment-check,
+#     float-form, inherit-check, float-accept, float-date, float-reason, float-owner, float-publisher,
+#     float-sha, float-branch) and requires each case that block exists for to flip its verdict, for
+#     the stated reason where the case names one (dropping float-form must produce the comment-format
+#     error). Every block has at least one such case. Last, it swaps inherit-check for a plain text
+#     search and requires that to refuse the mention cases, which it did to real callers.
 #   - this-repository: a real call through `uses:`, on this repository's own workflows, which rule 9
 #     covers like any caller's.
 
