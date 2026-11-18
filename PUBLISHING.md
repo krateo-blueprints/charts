@@ -341,7 +341,7 @@ No release reported any of this.
       ```yaml
           - name: Push the chart
             id: push
-            uses: krateo-platformops/.github/.github/actions/chart-push@fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4 # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@5f126b7d93ec5302eb9cc57a3af157550175fbaf # main 2026-11-18
             with:
               chart: dist/<name>-<version>.tgz
               repository: oci://ghcr.io/krateo-blueprints/charts
@@ -361,7 +361,7 @@ No release reported any of this.
       ```yaml
           - name: Locate the shared chart push
             id: chart-push
-            uses: krateo-platformops/.github/.github/actions/chart-push@fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4 # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@5f126b7d93ec5302eb9cc57a3af157550175fbaf # main 2026-11-18
           - name: Push every chart
             env:
               CHART_PUSH: ${{ steps.chart-push.outputs.path }}
@@ -373,8 +373,12 @@ No release reported any of this.
               done
       ```
 
-      `fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4` is the merge of krateo-platformops/.github#59, the
-      digest-safe retry, committed on that repository's main on 2026-11-18.
+      `5f126b7d93ec5302eb9cc57a3af157550175fbaf` is the merge of krateo-platformops/.github#61 on that
+      repository's main, committed 2026-11-18. #59 brought the digest-safe retry, and #61 took the last
+      `| head -n1` reads out of it. At that commit `push.sh` has sha256
+      `d3252aa28a2cbb2d36818cd8a059179ce4fc97dd0cd7f6609714a83580b10686` and `action.yml`
+      `3ee0aca665b798c37da7179cd23a2b2d84f7da3990eac1a538d46e75b01bffce`. The example names a commit
+      so it can be copied as is; pin the newest commit that changed the action.
     - **What it retries:** that exact error and nothing else. It waits, polling up to 10 times 3 s
       apart, until the registry serves bytes that hash to the digest, then pushes the same untouched
       archive again. helm takes the manifest's created time from the archive's modification time
