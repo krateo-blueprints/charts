@@ -143,7 +143,10 @@ jobs:
             # blueprints and operators indexes already have this shape.
             # BEGIN rule-13 version check (test/publish-chart/run-content-gate.py removes this block
             # to prove its own cases can see it)
-            if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            # The pattern is defined once more, byte for byte, in release-preflight.yaml, which checks the release
+            # version before anything is pushed; test/release-preflight/run-cases.py fails if the two differ.
+            PLAIN_VERSION='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+            if ! [[ "$version" =~ $PLAIN_VERSION ]]; then
               echo "::error::$name ${version}: not a plain X.Y.Z release version; pre-releases are never indexed (PUBLISHING.md rule 13)"
               fail=1; continue
             fi

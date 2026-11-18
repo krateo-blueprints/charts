@@ -300,8 +300,17 @@ No release reported any of this.
       of its own, pinned like the publisher (rule 9). The job that pushes to GHCR declares `needs:`
       on it, so every later step does too. A refusal then stamps, pushes, indexes and releases
       nothing, and needs no new version number.
-    - **Repositories without the hook:** the job passes and says so, so every repository can call it
-      unconditionally.
+    - **The version, before anything else:** the job first checks the version against rule 13's pattern,
+      `^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$`, and refuses anything else, hook or no hook.
+      - **Why it runs here:** publish-chart refuses the same versions, but at index time, after the
+        caller's GHCR push. A version only publish-chart refused would be pushed and never indexed, the
+        half-state this preflight exists to prevent.
+      - **Found by:** github-provider-kog#111. Its own earlier check, `^[0-9]+\.[0-9]+\.[0-9]+$`, accepted
+        `0.015.0`. A repository's own version check is never looser than this one.
+      - **One pattern:** it is byte-identical in `release-preflight.yaml` and `publish-chart.yaml`, and
+        `test/release-preflight/run-cases.py` fails if the two differ.
+    - **Repositories without the hook:** the version check still runs; otherwise the job passes and says
+      so, so every repository can call it unconditionally.
     - **A hook that can't run:** a `hack/release-preflight` that exists but is not an executable
       file fails the job. A lost executable bit would otherwise skip the guard exactly when it was
       meant to run.
@@ -329,9 +338,15 @@ No release reported any of this.
     krateo-openstack-blueprint's `prerelease.yaml` does this, at `X.Y.Z-main.g<sha7>`. Such a
     workflow doesn't call this publisher and doesn't hold `CHARTS_PUBLISH_TOKEN`. Helm resolves an
     OCI chart with no `--version` to the newest version that isn't a pre-release, so it installs a
-    pre-release only when someone asks for that exact version. This rule is the second barrier: a
-    pre-release handed to the publisher by mistake fails the content gate before anything is
-    stored. Measured on 2026-11-18, all 3,186 entries in the `blueprints` and `operators` indexes
+    pre-release only when someone asks for that exact version.
+
+    The same pattern is checked twice:
+    - **First, before any push:** `release-preflight.yaml` (rule 12) refuses the release version
+      before the caller's GHCR push.
+    - **Second, at index time:** a pre-release handed to the publisher by mistake fails the content
+      gate before anything is stored.
+
+    Both use one pattern, kept byte-identical by a test. Measured on 2026-11-18, all 3,186 entries in the `blueprints` and `operators` indexes
     were already plain `X.Y.Z`, so the rule refuses nothing that has ever been published.
 
 14. **Every chart is pushed through one shared action, which survives GHCR's tag race.** GHCR

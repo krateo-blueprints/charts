@@ -2,7 +2,9 @@ name: test-release-preflight
 
 # Self-test for the reusable release-preflight.yaml.
 #
-#   - hook-semantics: runs the workflow's own hook step against every fixture under
+#   - hook-semantics: also the rule-13 version cases (leading zeros, v, -rc, +build, empty and more), the
+#     check deleted and loosened as mutants, and the pattern compared with publish-chart.yaml's byte for byte.
+#     It runs the workflow's own hook step against every fixture under
 #     test/release-preflight/ and checks each exit code. That covers no script (passes), passing
 #     script, the version arriving as $1, empty version, failing script, non-executable script and
 #     dangling link. A failing case can't run as a failing job here without turning this
@@ -16,6 +18,8 @@ on:
   pull_request:
     paths:
       - .github/workflows/release-preflight.yaml
+      # The rule-13 pattern must stay byte-identical to publish-chart's; a change there re-runs the comparison.
+      - .github/workflows/publish-chart.yaml
       - .github/workflows/test-release-preflight.yaml
       - test/release-preflight/**
   push:
@@ -23,6 +27,8 @@ on:
       - main
     paths:
       - .github/workflows/release-preflight.yaml
+      # The rule-13 pattern must stay byte-identical to publish-chart's; a change there re-runs the comparison.
+      - .github/workflows/publish-chart.yaml
       - .github/workflows/test-release-preflight.yaml
       - test/release-preflight/**
 
