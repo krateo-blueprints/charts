@@ -273,6 +273,44 @@ No release reported any of this.
      new release of a tagged reusable workflow arrives as a reviewed pull request in each repository
      rather than silently. That is how a fix like #5 or #6 still reaches everyone. A `# main
      YYYY-MM-DD` pin has no tag for Dependabot to follow; it is moved by hand, deliberately.
+     Three lessons from moving these pins (openstack-ironic-operator-kog, 2026-11-18):
+     - **Record the command, not the output.** A pin's SHA appears exactly once, on its `uses:` line.
+       A comment that repeats the verified SHA ("verified: 1.0.1 → 36ea357") is a second copy that
+       Dependabot does not update, and it goes stale on the next bump. ironic's did, twice. Record how
+       to re-resolve the pin instead:
+
+       ```yaml
+           # Resolve with: git ls-remote https://github.com/krateo-blueprints/charts 'refs/tags/X.Y.Z^{}'
+           uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@<sha> # X.Y.Z
+       ```
+
+     - **Exclusion is not grouping.** Excluding `krateo-blueprints/charts*` from a Dependabot group,
+       so that charts pins are reviewed separately, makes each charts pin its own pull request. Merged
+       one at a time, they drift apart, and the repository pins two charts versions. Use a dedicated
+       group instead, so all of a repository's charts pins move together in one pull request:
+
+       ```yaml
+       version: 2
+       updates:
+         - package-ecosystem: github-actions
+           directory: /
+           schedule:
+             interval: weekly
+           groups:
+             krateo-charts:
+               patterns:
+                 - "krateo-blueprints/charts*"
+             krateo-platformops:
+               patterns:
+                 - "krateo-platformops/.github*"
+       ```
+
+     - **For `publish-chart.yaml`, compare the contract, not the diff size.** It is on the release
+       path, and a broken contract shows up only when a tag is pushed. Before moving its pin, compare
+       `on.workflow_call` at both SHAs: its `inputs` (names, `required`, types) and its `secrets`. Read
+       the file at each SHA, for example `gh api -H 'Accept: application/vnd.github.raw'
+       'repos/krateo-blueprints/charts/contents/.github/workflows/publish-chart.yaml?ref=<sha>'`. A
+       small diff can still add a required input, and a large one may change none.
 
 10. **Released commits passed lint.** The caller's release refuses a commit with no successful lint
     run. That check belongs to the caller's workflow, because only the caller knows its own lint.
