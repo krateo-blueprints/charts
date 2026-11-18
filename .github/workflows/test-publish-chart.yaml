@@ -1,0 +1,52 @@
+name: test-publish-chart
+
+# Self-test for the publisher's content gate (publish-chart.yaml, "Content gate").
+#
+#   - content-gate: runs the gate's own shell, read out of publish-chart.yaml so it tests the bytes
+#     callers run, against archives packaged here with helm: a release in each channel (accepted),
+#     and pre-release, build-metadata, `v`-prefixed and leading-zero versions (refused, PUBLISHING.md
+#     rule 13). Then it deletes the rule-13 block from that shell and runs the refused cases again:
+#     each must now be accepted, which proves the cases are refused by rule 13 and not by some other
+#     check that happens to fail on the same archive.
+#
+# The gate needs GNU tar (--wildcards) and mikefarah yq, as on the runner, so this is not run on a
+# laptop.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/publish-chart.yaml
+      - .github/workflows/test-publish-chart.yaml
+      - test/publish-chart/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/publish-chart.yaml
+      - .github/workflows/test-publish-chart.yaml
+      - test/publish-chart/**
+
+permissions:
+  contents: read
+
+jobs:
+  content-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The publisher's own pin and helm version, so the archives are packaged as callers' are.
+      - name: Install helm
+        uses: azure/setup-helm@9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310 # v5.0.1
+        with:
+          version: v3.19.0
+
+      - name: Every archive gets the verdict it should, and rule 13 is what refuses pre-releases
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          /tmp/venv/bin/python test/publish-chart/run-content-gate.py

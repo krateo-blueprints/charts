@@ -5,7 +5,8 @@ name: publish-chart
 # A caller pushes its charts to GHCR, uploads the same .tgz as an artifact, and calls this once per
 # channel. In this order, so that nothing is written unless everything can be:
 #   1. the token can write here, or nothing else runs;
-#   2. every chart belongs in this channel and is complete (PUBLISHING.md rules 2 and 3);
+#   2. every chart belongs in this channel, is complete, and is a release, never a pre-release
+#      (PUBLISHING.md rules 2, 3 and 13);
 #   3. no other repository owns the name or has stored the version (rule 6);
 #   4. the tarballs are stored in this repository's Releases and download anonymously (rule 5);
 #   5. the index is merged, never rebuilt, and pushed;
@@ -134,6 +135,19 @@ jobs:
             if [ "$(basename "$tgz")" != "${name}-${version}.tgz" ]; then
               echo "::error::$(basename "$tgz"): Chart.yaml says ${name} ${version}"; fail=1; continue
             fi
+            # Rule 13: pre-releases are never indexed. An index entry is never removed (see "What is
+            # never done"), and the Marketplace offers the live index's versions newest first, so a
+            # pre-release that got in would be on offer forever. Every channel, not only blueprints:
+            # the index is the installable catalogue in all three. Plain X.Y.Z, no `v`, no leading
+            # zeros, no -prerelease, no +build. Measured 2026-11-18: all 3,186 entries in the
+            # blueprints and operators indexes already have this shape.
+            # BEGIN rule-13 version check (test/publish-chart/run-content-gate.py removes this block
+            # to prove its own cases can see it)
+            if ! [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+              echo "::error::$name ${version}: not a plain X.Y.Z release version; pre-releases are never indexed (PUBLISHING.md rule 13)"
+              fail=1; continue
+            fi
+            # END rule-13 version check
             # Rule 3: every chart names its source repository, so a pinned chart can be traced to the
             # commit and CI run that built it.
             # GitHub owner and repository names are case-insensitive, and a builder writes them as the
