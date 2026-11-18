@@ -63,12 +63,36 @@ name: pinned-uses
 #     race (sha256:<digest>: not found after an accepted PUT).
 #     A line whose first non-blank character is `#`, a YAML or shell comment, is not a push. The check
 #     is textual and reads the workflow files and every *.sh, *.mk and Makefile in the checkout (1.4.1:
-#     a script the workflow runs pushed bare and passed 1.4.0); a .py, or a push through a variable
-#     (`$HELM push`), is not seen. The summary counts the scripts scanned. It cannot tell an `oras push` of a chart from
+#     a script the workflow runs pushed bare and passed 1.4.0), and every other file whose first line is
+#     a shell shebang (`^#!.*\b(ba|da|k|z)?sh\b`), extension or not (1.4.4: an extensionless
+#     hack/release-preflight with a bare push passed 1.4.3). A python shebang is not shell, so a .py, or a
+#     push through a variable (`$HELM push`), is not seen. The summary counts the scripts scanned. It cannot tell an `oras push` of a chart from
 #     one of another artifact, so it refuses both; a non-chart `oras push` is decided in
 #     PUBLISHING.md first.
 #
 # A repository with no workflow file at all fails: a check that read nothing has checked nothing.
+#
+# Rule 9, the prose agrees with the pin (1.4.4). A comment that says which version a pin is must name the version
+# on the pin's own `# X.Y.Z`. krateo-arubacloud-provider-kog before its #99 said "Pinned to the commit tag 1.0.2
+# points at" 33 lines above a `# 1.4.2` pin; openstack-nova-operator-kog before its #197 said "adopted at charts
+# 1.3.0, whose tag peels to this commit" above one. Measured over all 104 repositories before it became a check
+# (Diego, 2026-11-18). How it reads a comment:
+#   - scope is the YAML's structure, never a line window: a job-level `uses:` with its job block, a step-level one
+#     with its step block, each with the comment run directly above it at the key's indent;
+#   - only full-line comments, as sentences, and only a sentence with a pin-referring phrase: "this commit", "this
+#     pin", "pinned here" and "verified here" bind the sentence, a bare "pinned to" or "points at" only its clause;
+#     a phrase inside "..." or `...` is a mention and is not read;
+#   - only versions of the pinned thing: an X.Y.Z that is a tag of the pinned repository, from `git ls-remote
+#     --tags` (once per repository per run); a sentence naming another pin of the file, and not this one, is
+#     that pin's;
+#   - it disagrees when the bound text names such versions and none is the pin's. History naming the current pin
+#     agrees ("1.0.1 lost a race, 1.0.3 <- pinned here" over `# 1.0.3`).
+# The FAIL line names the comment line, the pin's line and version, the scope and its lines, and the listing's
+# count: distinct tags, and how many are annotated (the `^{}` rows), not the raw row count. An empty or failed
+# listing is a failed measurement: exit 2, never a pass, never a skip.
+# Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
+# YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read; and another product's version
+# that equals a tag of the pinned repository is compared as though it were the pin's.
 #
 # Also checked, on the same `uses:`: no `secrets: inherit` when the reusable's owner is not the
 # caller's owner. `inherit` passes nothing to a reusable in another organisation, and nothing says so:
@@ -115,6 +139,7 @@ jobs:
           import glob
           import os
           import re
+          import subprocess
           import sys
 
           files = sorted(glob.glob(".github/workflows/*.yaml") + glob.glob(".github/workflows/*.yml"))
@@ -310,12 +335,28 @@ jobs:
           # and Makefile in the checkout is read, comment lines skipped; a heredoc line is judged live, since it runs (krateo-openstack-blueprint's hack/publish-charts.sh, 2026-11-18,
           # passed 1.4.0 by being outside .github/workflows).
           scripts = []
+          # Any file whose first line is a shell shebang is a script too, extension or not (1.4.4: the
+          # openstack-ironic-operator-kog session planted a bare push in its extensionless hack/release-preflight
+          # and 1.4.3 scanned past it). A python shebang is not a shell one.
+          SHELL_SHEBANG = re.compile(r"^#!.*\b(ba|da|k|z)?sh\b")
           for d, ds, fs in os.walk("."):
               ds[:] = sorted(x for x in ds if x not in (".git", "node_modules"))
               # Where a push actually executes: shell scripts and Makefiles. A .py is not read: a line filter would
               # count docstring prose as code (the nova-kog session), and no repository runs helm from Python today.
-              scripts += [os.path.normpath(os.path.join(d, f)) for f in fs
-                          if f.endswith((".sh", ".mk")) or f in ("Makefile", "makefile", "GNUmakefile")]
+              for f in fs:
+                  path = os.path.normpath(os.path.join(d, f))
+                  if f.endswith((".sh", ".mk")) or f in ("Makefile", "makefile", "GNUmakefile"):
+                      scripts.append(path)
+                      continue
+                  # BEGIN shebang-select (a shell script needs no extension: hack/release-preflight, rule 12's own hook)
+                  try:
+                      with open(path, "rb") as fh:
+                          first = fh.readline(256).decode("utf-8", "replace")
+                  except OSError:
+                      continue
+                  if SHELL_SHEBANG.match(first):
+                      scripts.append(path)
+                  # END shebang-select
           scripts.sort()
           # BEGIN script-scan (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
           for path in scripts:
@@ -328,12 +369,270 @@ jobs:
                   if bp:
                       pushes.append("%s:%d: a bare `%s push` in a script; run it through %s (locate mode: `bash \"${CHART_PUSH}\" <tgz> <oci repo>` with CHART_PUSH from the action's path output), which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, bp.group(2), CHART_PUSH_ACTION))
           # END script-scan
+          # Rule 9, the prose agrees with the pin (1.4.4). A comment that says which version a pin is ("pinned to the
+          # commit tag 1.0.2 points at", "whose tag peels to this commit") must name the version on the pin's own
+          # `# X.Y.Z`. Measured over all 104 repositories on 2026-11-18 before it became a check: krateo-arubacloud-provider-kog
+          # before its #99 and openstack-nova-operator-kog before its #197 said so of an older version, 33 and 9 lines above.
+          #   - Scope is structural, never a line window: a job-level `uses:` (a reusable workflow call) is read with its job
+          #     block, a step-level one with its step block. A block is its key line or `-` item through the line before its
+          #     next sibling, plus the comment run directly above it at the key's own indent.
+          #   - Only full-line comments are read, joined into sentences (an empty `#` line ends a paragraph).
+          #   - Only a sentence holding a pin-referring phrase is read. "this commit", "this pin", "pinned here" and
+          #     "verified here" bind the whole sentence, unless a past-tense verb follows the phrase ("This pin sat at
+          #     1.0.4 while ...": history, not a claim about the pin now); a bare "pinned to" or "points at" binds only
+          #     its own clause (no `, ; : ( ) --` between). A phrase inside "..." or `...` is a mention, not a use.
+          #   - Only versions OF THE PINNED THING are compared: an X.Y.Z (optional `v`, no leading zero) that is a tag of
+          #     the pinned repository, listed with `git ls-remote --tags` (once per repository per run). The repository's
+          #     own chart version, or another product's release, is not this pin's. A sentence that names another pin of
+          #     the same file and not this one is left to that pin.
+          #   - A bound text disagrees when it names versions of the pinned thing and none is the pin's (a major-only pin,
+          #     `# v5`, agrees with any v5.x.y). History that names the current pin agrees: "1.0.1 lost a race, 1.0.3 <-
+          #     pinned here" over `# 1.0.3`.
+          #   - The tag listing is a measurement: an empty or failed one is an error (exit 2), never a pass and never a
+          #     skip. Its count is the number of distinct tags, not counting the `^{}` rows of annotated tags.
+          # Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
+          # YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read (only .github/workflows); and
+          # another product's version that equals a tag of the pinned repository is compared as if it were the pin's.
+          AGREE_PIN = re.compile(r"""^(\s*)(-\s+)?uses:\s*['"]?([^'"\s#@]+)@([0-9a-f]{40})['"]?\s*(?:#\s*(.*))?$""")
+          AGREE_TOKEN = re.compile(r"(?<![\w.])v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\w])(?!\.[0-9])")
+          AGREE_PIN_VERSION = re.compile(r"^v?([0-9]+(?:\.[0-9]+){0,2})\b")
+          AGREE_PHRASE = re.compile(r"this commit|this pin|pinned here|pinned to|verified here|points at", re.I)
+          AGREE_DEICTIC = re.compile(r"this commit|this pin|pinned here|verified here", re.I)
+          AGREE_PAST = re.compile(r"\s+(?:was|were|had|sat|stood|went|held|used to|[a-z]{2,}ed)\b", re.I)
+          AGREE_CLAUSE = re.compile(r"[,;:()]|--|—")
+          AGREE_QUOTED = re.compile(r'"[^"]*"|`[^`]*`|“[^”]*”')
+          AGREE_KEY = re.compile(r"^(\s*)([A-Za-z0-9_.-]+):(\s|$)")
+          AGREE_ITEM = re.compile(r"^(\s*)-(\s|$)")
+          tag_listings = {}
+          disagreements, measurement_errors = [], []
+
+
+          def agree_comment(l):
+              return l.lstrip().startswith("#")
+
+
+          def agree_blank(l):
+              return not l.strip()
+
+
+          def block_end(lines, start, ind, item):
+              # The last line of the block that starts at lines[start] (a key, or a `-` item, at indent ind).
+              last = start
+              for i in range(start + 1, len(lines)):
+                  l = lines[i]
+                  if agree_blank(l) or agree_comment(l):
+                      continue
+                  if indent(l) <= ind:
+                      break
+                  last = i
+              j = last + 1
+              while j < len(lines) and agree_comment(lines[j]) and indent(lines[j]) > ind:
+                  last = j
+                  j += 1
+              return last
+
+
+          def leading(lines, start, ind):
+              # The first line of the comment run directly above lines[start] that sits at the key's own indent; deeper
+              # comments at the top of that run trail the previous block.
+              i = start
+              while i - 1 >= 0 and agree_comment(lines[i - 1]):
+                  i -= 1
+              run = list(range(i, start))
+              k = 0
+              while k < len(run) and indent(lines[run[k]]) != ind:
+                  k += 1
+              return run[k] if k < len(run) else start
+
+
+          def pin_scopes(lines):
+              # {index of a pinned `uses:` line: (kind, first, last)}, its job block or its step block.
+              out = {}
+              jobs_i = next((i for i, l in enumerate(lines) if re.match(r"^jobs:\s*(#.*)?$", l)), None)
+              if jobs_i is None:
+                  return out
+              job_ind = None
+              for i in range(jobs_i + 1, len(lines)):
+                  l = lines[i]
+                  if agree_blank(l) or agree_comment(l):
+                      continue
+                  if indent(l) == 0:
+                      break
+                  if job_ind is None:
+                      job_ind = indent(l)
+                  if indent(l) != job_ind or not AGREE_KEY.match(l):
+                      continue
+                  j_end = block_end(lines, i, job_ind, False)
+                  j_first = leading(lines, i, job_ind)
+                  child = next((indent(lines[x]) for x in range(i + 1, j_end + 1)
+                                if not agree_blank(lines[x]) and not agree_comment(lines[x])), None)
+                  for u in range(i, j_end + 1):
+                      m = AGREE_PIN.match(lines[u])
+                      if not m:
+                          continue
+                      if not m.group(2) and indent(lines[u]) == child:
+                          out[u] = ("job", j_first, j_end)
+                          continue
+                      scope = ("job", j_first, j_end)
+                      # BEGIN step-scope (a step's pin is read with its step, not its job: nova-kog's conflation, 1 -> 54 hits)
+                      s = u
+                      if not m.group(2):
+                          s = next((x for x in range(u - 1, i, -1) if AGREE_ITEM.match(lines[x]) and indent(lines[x]) < indent(lines[u])), u)
+                      scope = ("step", leading(lines, s, indent(lines[s])), block_end(lines, s, indent(lines[s]), True))
+                      # END step-scope
+                      out[u] = scope
+              return out
+
+
+          def pin_names(ref):
+              # How a comment names the pinned thing: the workflow or action's basename, and the repository's name.
+              base = re.sub(r"\.ya?ml$", "", ref.rstrip("/").split("/")[-1]).lower()
+              repo = ref.split("/")[1].lower().lstrip(".") if ref.count("/") >= 1 else ""
+              return {x for x in (base, repo) if len(x) > 2}
+
+
+          def comment_sentences(block):
+              # [(sentence, offset in its paragraph, [(end offset, line number)])] from (line number, text) comment lines.
+              paras, cur = [], []
+              for n, l in block:
+                  t = l.strip()[1:].strip()
+                  if not t:
+                      if cur:
+                          paras.append(cur)
+                      cur = []
+                      continue
+                  cur.append((n, t))
+              if cur:
+                  paras.append(cur)
+              out = []
+              for p in paras:
+                  text, owners = "", []
+                  for n, t in p:
+                      text += (" " if text else "") + t
+                      owners.append((len(text), n))
+                  for m in re.finditer(r"(?:[^.!?]|[.!?](?!\s|$))+[.!?]?", text):
+                      if m.group(0).strip():
+                          out.append((m.group(0), m.start(), owners))
+              return out
+
+
+          def line_at(pos, owners):
+              for end, n in owners:
+                  if pos < end:
+                      return n
+              return owners[-1][1]
+
+
+          def tags_of(repo):
+              # The pinned repository's distinct tags, `v` stripped, from one `git ls-remote --tags`; None after an error.
+              if repo in tag_listings:
+                  return tag_listings[repo]
+              url = "https://github.com/%s" % repo
+              try:
+                  p = subprocess.run(["git", "ls-remote", "--tags", url], capture_output=True, text=True, timeout=120,
+                                     env=dict(os.environ, GIT_TERMINAL_PROMPT="0"))
+                  rc, rows, err = p.returncode, [l.split("\t", 1)[1] for l in p.stdout.splitlines() if "\t" in l], p.stderr.strip()
+              except (OSError, subprocess.TimeoutExpired) as e:
+                  rc, rows, err = -1, [], str(e)
+              names = {r[len("refs/tags/"):] for r in rows if r.startswith("refs/tags/") and not r.endswith("^{}")}
+              peeled = sum(1 for r in rows if r.endswith("^{}"))
+              # BEGIN listing-control (an empty or failed listing is a failed measurement, never a pass)
+              if rc != 0 or not names:
+                  measurement_errors.append("`git ls-remote --tags %s` %s, so whether a comment names a tag of %s is not known; this is a failed measurement, not a pass (exit 2)" % (url, "exited %d: %s" % (rc, err[:200]) if rc != 0 else "listed no tags", repo))
+                  tag_listings[repo] = None
+                  return None
+              # END listing-control
+              tag_listings[repo] = ({x[1:] if x.startswith("v") else x for x in names}, len(names), peeled)
+              return tag_listings[repo]
+
+
+          def pin_agrees(tok, pin):
+              tok = tok[1:] if tok.startswith("v") else tok
+              return tok == pin or (pin.count(".") < 2 and tok.startswith(pin + "."))
+
+
+          # BEGIN agreement-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
+          for path in files:
+              lines = open(path, encoding="utf-8").read().split("\n")
+              scopes = pin_scopes(lines)
+              pins = {u: AGREE_PIN.match(lines[u]) for u in scopes}
+              for u, (kind, first, last) in sorted(scopes.items()):
+                  m = pins[u]
+                  ref, pin_comment = m.group(3), (m.group(5) or "").strip()
+                  pv = AGREE_PIN_VERSION.match(pin_comment)
+                  if not pv:
+                      continue
+                  pin = pv.group(1)
+                  repo = "/".join(ref.split("/")[:2])
+                  mine = pin_names(ref)
+                  others = set()
+                  for v, mm in pins.items():
+                      if v != u and mm.group(3) != ref:
+                          others |= pin_names(mm.group(3)) - mine
+                  block = [(k + 1, lines[k]) for k in range(first, last + 1) if agree_comment(lines[k])]
+                  seen = set()
+                  for sent, start, owners in comment_sentences(block):
+                      low = sent.lower()
+                      # BEGIN other-pin (a sentence about another pin of this file is that pin's)
+                      if others and any(o in low for o in others) and not any(x in low for x in mine):
+                          continue
+                      # END other-pin
+                      toks = [(t.start(), t.end(), t.group(0)) for t in AGREE_TOKEN.finditer(sent)]
+                      if not toks:
+                          continue
+                      unquoted = sent
+                      # BEGIN quote-mention (a phrase in "..." or `...` is mentioned, not used: nova-kog #201 quotes its old defect)
+                      unquoted = AGREE_QUOTED.sub(lambda q: " " * len(q.group(0)), sent)
+                      # END quote-mention
+                      regions = [(0, len(sent))]
+                      # BEGIN phrase-required (only a sentence that refers to the pin is read; history and fixtures are not)
+                      regions = []
+                      for pm in AGREE_PHRASE.finditer(unquoted):
+                          if AGREE_DEICTIC.match(pm.group(0)):
+                              # BEGIN deictic-history (a deictic phrase followed by a past-tense verb is history: "This pin sat
+                              # at 1.0.4 while ..." in openstack-ironic-operator-kog, whose pin has since moved to 1.4.3)
+                              if AGREE_PAST.match(unquoted, pm.end()):
+                                  continue
+                              # END deictic-history
+                              regions.append((0, len(sent)))
+                          else:
+                              lo = max([0] + [c.end() for c in AGREE_CLAUSE.finditer(unquoted, 0, pm.start())])
+                              nxt = AGREE_CLAUSE.search(unquoted, pm.end())
+                              regions.append((lo, nxt.start() if nxt else len(sent)))
+                      # END phrase-required
+                      for lo, hi in regions:
+                          inside = [t for t in toks if t[0] >= lo and t[1] <= hi]
+                          if not inside:
+                              continue
+                          listing = tags_of(repo)
+                          if listing is None:
+                              continue
+                          # BEGIN tag-filter (only versions of the pinned thing: nova-kog's own chart version 0.1.9 is not one)
+                          inside = [t for t in inside if (t[2][1:] if t[2].startswith("v") else t[2]) in listing[0]]
+                          # END tag-filter
+                          if not inside or any(pin_agrees(t[2], pin) for t in inside):
+                              continue
+                          for a, b, tok in inside:
+                              n = line_at(start + a, owners)
+                              if (n, tok) in seen:
+                                  continue
+                              seen.add((n, tok))
+                              excerpt = sent.strip()
+                              disagreements.append("%s:%d: names %s of %s, but the pin at %s:%d is `# %s` (%s scope, lines %d-%d; %d distinct tags of %s listed, %d of them annotated): \"%s\"" % (
+                                  path, n, tok, repo, path, u + 1, pin_comment, kind, first + 1, last + 1, listing[1], repo, listing[2],
+                                  excerpt if len(excerpt) <= 240 else excerpt[:237] + "..."))
+          # END agreement-check
           for where in dated_tagged:
               print("::notice title=dated pin into a tagged repository::%s is pinned with `# main YYYY-MM-DD`. That form is for a publisher with no tags; Dependabot cannot advance such a pin, so it is transitional, and a repository on it is waiting on its publisher to tag. krateo-platformops/.github is tagged from 1.0.0 (charts#23), so pin `# 1.0.0` (or a later `# X.Y.Z`); resolve the tag with `^{}` (git ls-remote <repo> 'refs/tags/X.Y.Z^{}') when pinning and when reviewing, since refs/tags/X.Y.Z is the annotated tag object, not the commit" % where)
           for where, date, reason in floats:
               print("::notice title=floating reusable workflow::%s floats since %s, reason: %s" % (where, date, reason))
           for b in bad + inherits + pushes:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit, %d shared-action uses, %d bare chart push(es) (PUBLISHING.md rule 14), %d script(s) scanned, %d dated pin(s) into a tagged repository" % (len(files), checked, len(bad), len(floats), len(inherits), actions, len(pushes), len(scripts), len(dated_tagged)))
-          sys.exit(1 if bad or inherits or pushes else 0)
+          for b in disagreements:
+              print("::error title=pin comment disagrees with the pin::" + b)
+          for b in measurement_errors:
+              print("::error title=failed measurement::" + b)
+          listed = {r: v for r, v in tag_listings.items() if v is not None}
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit, %d shared-action uses, %d bare chart push(es) (PUBLISHING.md rule 14), %d script(s) scanned, %d dated pin(s) into a tagged repository, %d pin comment(s) disagreeing with the pin, %d tag listing(s) (%s), %d failed" % (len(files), checked, len(bad), len(floats), len(inherits), actions, len(pushes), len(scripts), len(dated_tagged), len(disagreements), len(listed), ", ".join("%s: %d distinct tags, %d annotated" % (r, v[1], v[2]) for r, v in sorted(listed.items())) or "none needed", len(measurement_errors)))
+          sys.exit(2 if measurement_errors else 1 if bad or inherits or pushes or disagreements else 0)
           PY

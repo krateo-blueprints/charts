@@ -37,6 +37,12 @@ name: test-pinned-uses
 #     commented one in either passes (push-comment); a script calling the action's push.sh passes; and the
 #     summary counts the files scanned (0 when there are none; a .py, docstring included, is not read). A dated pin into krateo-platformops/.github, tagged since 1.0.0, passes with a notice; a
 #     `# 1.0.0` pin gets none.
+#     1.4.4: an extensionless file with a shell shebang is read as a script (block shebang-select: a bare push
+#     in hack/release-preflight is refused), a python shebang is not (a mutant selecting any shebang must refuse
+#     those cases); and the agreement check (rule 9: the prose agrees with the pin) on recorded files, with a
+#     fake git serving recorded tag listings: krateo-arubacloud-provider-kog before #99 and
+#     openstack-nova-operator-kog before #197 are flagged, openstack-ironic-operator-kog main and the planted
+#     cases pass, a failed or empty listing exits 2, and each of its blocks is deleted in turn.
 #   - this-repository: a real call through `uses:`, on this repository's own workflows, which rule 9
 #     covers like any caller's.
 

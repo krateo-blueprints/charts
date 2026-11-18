@@ -294,6 +294,35 @@ No release reported any of this.
        krateo-platformops/.github for charts tags. So run the control first: `git ls-remote --tags
        <repo> | wc -l` must be greater than 0 before an empty answer is read as "no such tag".
 
+     - **Annotated tags need `^{}`.** The number of `^{}` rows in `git ls-remote --tags <repo>` is the number
+       of annotated tags: `git ls-remote --tags <repo> | grep -c '\^{}'` shows whether a repository has any.
+       Both krateo-blueprints/charts (12 on 2026-11-18, its releases `1.0.0` to `1.4.3`, among 1553 distinct
+       tags) and krateo-platformops/.github (its `1.0.0`) tag releases annotated, so for them always resolve
+       with `^{}`. Count tags as distinct tags, without the `^{}` rows: charts listed 1565 rows, 1553 tags
+       plus 12 peel rows.
+
+     - **The prose agrees with the pin.** A comment that says which version a pin is names the version on
+       the pin's `# X.Y.Z`. krateo-arubacloud-provider-kog before its #99 said "Pinned to the commit tag
+       1.0.2 points at" 33 lines above a `# 1.4.2` pin, and openstack-nova-operator-kog before its #197 said
+       "adopted at charts 1.3.0, whose tag peels to this commit" above one. Neither was a pin copy: the
+       copy rule above compares SHAs, and these named a version. `pinned-uses.yaml` checks it from 1.4.4
+       (Diego, 2026-11-18, measured over all 104 repositories first):
+       - **Scope by structure, not by distance.** Good provenance is long: aruba's sat 33 lines above its
+         pin, nova's release-tag table 54. A job-level `uses:` is read with its job block, a step-level one
+         with its step block, each with the comment run directly above it.
+       - **Only a sentence that refers to the pin.** "this commit", "this pin", "pinned here" and
+         "verified here" bind the sentence; a bare "pinned to" or "points at" binds its own clause. A
+         phrase quoted in `"..."` or backticks is a mention: a fix that quotes the sentence it removed
+         passes.
+       - **Only versions of the pinned thing.** A version counts when it is a tag of the pinned
+         repository, listed with `git ls-remote --tags`. The repository's own chart version is not one.
+         A failed or empty listing fails the check as a measurement error (exit 2).
+       - **History is fine when it names the pin.** `1.0.1 lost a race, 1.0.3 <- pinned here` over
+         `# 1.0.3` agrees. Over `# 1.4.3` it does not: move the marker with the pin.
+       - **Not read:** inline (end-of-line) comments, pins whose comment holds no version (`# main
+         YYYY-MM-DD`, a recorded float), and `action.yml` files. Another product's version that equals a
+         tag of the pinned repository is compared as though it were the pin's; reword it if it is flagged.
+
      - **Exclusion is not grouping.** The defect is charts pins excluded from a group **and** in no
        group of their own. An exclusion paired with a dedicated charts group is the fixed state.
        Excluding `krateo-blueprints/charts*` from a Dependabot group,
@@ -377,6 +406,15 @@ No release reported any of this.
         needs:
           - preflight   # and the token check (rule 7)
     ```
+
+    - **A preflight that runs only for a release** (a workflow that also runs on pushes to `main`, or
+      publishes pre-releases) is skipped on the other runs, and the pushing job must still run then.
+      List the results it accepts; `needs.release-preflight.result != 'failure'` would also accept
+      `cancelled` (the openstack-ironic-operator-kog session, 2026-11-18):
+
+      ```yaml
+          if: ${{ !cancelled() && (needs.release-preflight.result == 'success' || needs.release-preflight.result == 'skipped') }}
+      ```
 
 13. **Pre-releases are never indexed.** The publisher refuses any chart whose version is not a
     plain `X.Y.Z`: no `v`, no leading zeros, no `-prerelease`, no `+build`. Every channel is
@@ -488,6 +526,11 @@ No release reported any of this.
         closed the gap.
         - In a script, use locate mode: `bash "${CHART_PUSH}" <tgz> <oci repo>`, with CHART_PUSH
           exported from the action's `path` output.
+        - **By shebang too (1.4.4):** any other file whose first line is a shell shebang
+          (`^#!.*\b(ba|da|k|z)?sh\b`) is read, whatever its name. Rule 12's own hook,
+          `hack/release-preflight`, has no extension; the openstack-ironic-operator-kog session planted a
+          bare push in it and 1.4.3 reported "0 bare chart push(es), 13 script(s) scanned". A python
+          shebang is not shell, so a Python file that prints the words is not read.
         - Other files are not read: a Python script that runs it, or a push through a variable
           (`$HELM push`). Such pushes are replaced by the action, not hidden from the check. A `.py` is
           left out because a comment-line filter would count docstring prose as code, and the 2026-11-18
