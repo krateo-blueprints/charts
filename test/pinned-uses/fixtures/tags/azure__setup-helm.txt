@@ -1,0 +1,26 @@
+# git ls-remote --tags https://github.com/azure/setup-helm, recorded 2026-11-18, complete, 25 rows.
+18bc76811624f360dbd7f18c2d4ecb32c7b87bab	refs/tags/v1
+18bc76811624f360dbd7f18c2d4ecb32c7b87bab	refs/tags/v1.1
+199ab446dfa1589521f53f82278b37edff546f3b	refs/tags/v2
+a517f2ff6560563a369e16ca7c7d136b6164423f	refs/tags/v2.0
+217bf70cbd2e930ba2e81ba7e1de2f7faecc42ba	refs/tags/v2.1
+199ab446dfa1589521f53f82278b37edff546f3b	refs/tags/v2.2
+5119fcb9089d432beecbf79bb2c7915207344b78	refs/tags/v3
+20d2b4f98d41febe2bbca46408499dbb535b6258	refs/tags/v3.0
+e4f3964f67aac34233ac06d6614802b7040f2a7c	refs/tags/v3.1
+84b304dfb7ce923c8640d946349ca62a26b459da	refs/tags/v3.2
+b5b231a831f96336bbfeccc1329990f0005c5bb1	refs/tags/v3.3
+f382f75448129b3be48f8121b9857be18d815a82	refs/tags/v3.4
+5119fcb9089d432beecbf79bb2c7915207344b78	refs/tags/v3.5
+bf6a7d304bc2fdb57e0331155b7ebf2c504acf0a	refs/tags/v4
+1a275c3b69536ee54be43f2070a358922e12c8d4	refs/tags/v4^{}
+29960d0f5f19214b88e1d9ba750a9914ab0f1a2f	refs/tags/v4.0.0
+b7246b12e77f7134dc2d460a3d5bad15bbe29390	refs/tags/v4.1.0
+fe7b79cd5ee1e45176fcad797de68ecaf3ca4814	refs/tags/v4.2.0
+b9e51907a09c216f16ebe8536097933489208112	refs/tags/v4.3.0
+1a275c3b69536ee54be43f2070a358922e12c8d4	refs/tags/v4.3.1
+0697c8e2d5a705b86834a17ed8d5d2a996d3a464	refs/tags/v5
+2f5e7bc67f1f9972ab16657bb795f36d8f04de0e	refs/tags/v5^{}
+dda3372f752e03dde6b3237bc9431cdc2f7a02a2	refs/tags/v5.0.0
+9bc31f4ebc9c6b171d7bfbaa5d006ae7abdb4310	refs/tags/v5.0.1
+2f5e7bc67f1f9972ab16657bb795f36d8f04de0e	refs/tags/v5.1.0

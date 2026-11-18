@@ -22,6 +22,16 @@ callers that pass secrets by name and quote `secrets: inherit` in the comment ex
 `naive` must be refused by that mutant, so they are shown to test the difference between the key and a
 mention of it.
 
+1.4.4 adds two checks and their cases. The agreement check (rule 9: the prose agrees with the pin) is run on recorded
+workflow files from three repositories (fixtures/), with `git ls-remote --tags` served by a fake git from recorded
+listings (fixtures/tags), so no case needs the network: the two controls are flagged, ironic main passes, and so do
+the planted cases (two pins in one job, version history, regex fixture rows, the repository's own version, a
+sentence about another pin) and nova #201's quotation of its old defect; a failed or empty listing exits 2. Its
+blocks (agreement-check, step-scope, other-pin, quote-mention, phrase-required, deictic-history, tag-filter,
+listing-control) are deleted like the others. The shebang selection (rule 14 in extensionless scripts) refuses a
+bare push in an extensionless shell hook; a python shebang, extension or not, is not read, and a mutant that selects
+any shebang must refuse those python cases.
+
 Run from the repository root: python3 test/pinned-uses/run-cases.py
 """
 import os
@@ -302,6 +312,145 @@ CASES += [
      {"absent": "dated pin into a tagged repository::"}),
 ]
 
+
+# Rule 9, the prose agrees with the pin (1.4.4). Recorded inputs: three repositories' workflow files at the commits
+# named, and `git ls-remote --tags` listings served by a fake git (fixtures/tags), so the cases need no network.
+FIX = os.path.join(os.path.dirname(os.path.abspath(__file__)), "fixtures")
+
+
+def fixture(name):
+    d = os.path.join(FIX, name)
+    return {f: open(os.path.join(d, f)).read() for f in sorted(os.listdir(d))}
+
+
+P = "0123456789abcdef0123456789abcdef01234567"
+PUB = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
+AGREE_OK = "0 pin comment(s) disagreeing with the pin"
+TWO_PINS = """on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to v7.0.1, the release that fixed the credential persistence default.
+      - uses: actions/checkout@%s # v7.0.1
+      # Pinned to v5.0.0, verified here with git ls-remote.
+      - uses: azure/setup-helm@%s # v5.0.0
+        with:
+          version: v3.19.0
+""" % (P, P)
+HISTORY = """on: push
+jobs:
+  # 1.0.1 lost a race on the gh-pages push, 1.0.3 <- pinned here.
+  publish:
+    uses: %s@%s # 1.0.3
+""" % (PUB, P)
+FIXTURE_ROWS = """on: push
+jobs:
+  # A regex fixture inside the pin's own block. VERIFIED BY EXECUTING THIS LINE, extracted and run verbatim:
+  #
+  #   0.1.9 1.0.0 10.20.30                     ACCEPTED
+  #   01.1.0 0.2.0-rc1 v0.1.9 0.1              REFUSED
+  publish:
+    uses: %s@%s # 1.4.2
+""" % (PUB, P)
+OWN_VERSION = """on: push
+jobs:
+  # Verified here: this chart publishes 0.1.9 through it.
+  publish:
+    uses: %s@%s # 1.4.2
+""" % (PUB, P)
+OTHER_PIN = """on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      # setup-helm is pinned to v5.0.0 in the next step.
+      - uses: actions/checkout@%s # v7.0.1
+      - uses: azure/setup-helm@%s # v5.0.0
+""" % (P, P)
+STALE = """on: push
+jobs:
+  # Pinned to the commit tag 1.0.2 points at.
+  publish:
+    uses: %s@%s # 1.4.2
+""" % (PUB, P)
+CHART_PUSH = "krateo-platformops/.github/.github/actions/chart-push"
+
+
+def referent_case(comment_lines, version):
+    # One step pinning the shared chart-push action (krateo-platformops/.github, whose only tag is 1.0.0), with the
+    # given comment block above it.
+    body = "".join("      # %s\n" % l if l else "      #\n" for l in comment_lines)
+    return "on: push\njobs:\n  release:\n    runs-on: ubuntu-latest\n    steps:\n%s      - uses: %s@%s # %s\n" % (body, CHART_PUSH, P, version)
+
+
+CHARTS_TABLE = ["The publisher's history, from krateo-blueprints/charts:", "  1.0.2  retries that race",
+                "  1.0.3  case-insensitive repository names   <- pinned here"]
+CASES += [
+    # The numbers belong to the repository named before them (openstack-nova-operator-kog's table of charts versions).
+    ("charts table over a platformops pin", {"a.yaml": referent_case(CHARTS_TABLE, "1.0.3")}, False,
+     "a.yaml:8: names 1.0.3 of krateo-blueprints/charts, but the pin at .github/workflows/a.yaml:9 is krateo-platformops/.github `# 1.0.3`, another repository", "referent"),
+    # The same number in both repositories: platformops 1.0.0 exists, but the comment names charts 1.0.0.
+    ("charts 1.0.0 over a platformops 1.0.0", {"a.yaml": referent_case(["Verified here against krateo-blueprints/charts: its tag 1.0.0 peels to this commit."], "1.0.0")}, False,
+     "names 1.0.0 of krateo-blueprints/charts, but the pin at .github/workflows/a.yaml:7 is krateo-platformops/.github `# 1.0.0`, another repository", "referent"),
+    ("platformops history over a platformops pin", {"a.yaml": referent_case(["Resolved from https://github.com/krateo-platformops/.github:", "1.0.0 <- pinned here"], "1.0.0")}, True,
+     AGREE_OK, None),
+    # ironic's chart-push block opens with "krateo-blueprints/charts PUBLISHING.md rule 14", but its `# 1.0.0` sentence
+    # names krateo-platformops/.github: the block's first line does not own a later sentence.
+    ("a block's opening repository", {"a.yaml": referent_case(["krateo-blueprints/charts PUBLISHING.md rule 14: charts go through this action.", "",
+                                                                "`# 1.0.0` since 2026-11-18: this pin follows krateo-platformops/.github's tags."], "1.0.0")}, True,
+     AGREE_OK, None),
+    ("a file path is not a repository", {"a.yaml": referent_case(["krateo-blueprints/index.yaml lists 1.0.0; this pin is 1.0.0 of the action."], "1.0.0")}, True,
+     AGREE_OK, None),
+]
+CASES += [
+    ("aruba before #99 (control)", fixture("aruba-dad81ec"), False,
+     ".github/workflows/release-tag.yaml:257: names 1.0.2 of krateo-blueprints/charts, but the pin at .github/workflows/release-tag.yaml:290 is `# 1.4.2` (job scope, lines 250-296; 15 distinct tags of krateo-blueprints/charts listed, 12 of them annotated)",
+     "agreement-check"),
+    ("nova before #197 (control)", fixture("nova-558ee7e"), False,
+     ".github/workflows/lint.yaml:57: names 1.3.0 of krateo-blueprints/charts, but the pin at .github/workflows/lint.yaml:67 is `# 1.4.2` (job scope, lines 48-67;",
+     "agreement-check"),
+    ("ironic main 02ff492 passes", fixture("ironic-02ff492"), True, AGREE_OK, "phrase-required"),
+    ("ironic main 02ff492, its history sentence", fixture("ironic-02ff492"), True, AGREE_OK, "deictic-history"),
+    # A past-tense claim is read as history and is not verified: this one is false (the pin never sat at 1.0.2), and it
+    # passes. That is a stated limit (PUBLISHING.md rule 9), recorded here so a change to it is a decision.
+    ("false history in the past tense", {"a.yaml": STALE.replace("Pinned to the commit tag 1.0.2 points at.", "This pin was moved to 1.0.2 in #12.")}, True,
+     AGREE_OK, "deictic-history"),
+    ("'this pin is' over a newer pin", {"a.yaml": STALE.replace("Pinned to the commit tag 1.0.2 points at.", "This pin is the commit 1.0.2 carries.")}, False,
+     "a.yaml:3: names 1.0.2 of krateo-blueprints/charts", "agreement-check"),
+    ("two pins in one job", {"a.yaml": TWO_PINS}, True, AGREE_OK, "step-scope"),
+    ("version history agrees", {"a.yaml": HISTORY}, True, AGREE_OK, None),
+    ("regex fixture rows", {"a.yaml": FIXTURE_ROWS}, True, AGREE_OK, "phrase-required"),
+    ("the repo's own version", {"a.yaml": OWN_VERSION}, True, AGREE_OK, "tag-filter"),
+    ("nova #201 quotes its old defect", fixture("nova-955b926"), True, AGREE_OK, "quote-mention"),
+    ("a sentence about another pin", {"a.yaml": OTHER_PIN}, True, AGREE_OK, "other-pin"),
+    ("stale 'pinned to' over a newer pin", {"a.yaml": STALE}, False,
+     "a.yaml:3: names 1.0.2 of krateo-blueprints/charts, but the pin at .github/workflows/a.yaml:5 is `# 1.4.2`", "agreement-check"),
+    ("tag listing fails", {"a.yaml": STALE}, False, "is not known; this is a failed measurement, not a pass (exit 2)",
+     "listing-control", {"git": "fail", "exit": 2}),
+    ("tag listing empty", {"a.yaml": STALE}, False, "listed no tags, so whether a comment names a tag", "listing-control",
+     {"git": "empty", "exit": 2}),
+    ("no listing needed", {"a.yaml": job("uses: %s@%s # 1.4.2" % (PUB, P))}, True, "0 tag listing(s) (none needed), 0 failed", None,
+     {"git": "fail"}),
+]
+
+# Rule 14 in an extensionless shell script (1.4.4): selected by its shebang, not its name. A python shebang is not shell.
+HOOK = "#!/usr/bin/env bash\nset -euo pipefail\nhelm push \"dist/x-$1.tgz\" oci://ghcr.io/krateo-blueprints/charts\n"
+PY_MSG = '#!/usr/bin/env python3\nprint("never run helm push by hand; use chart-push")\n'
+IRONIC_PY = open(os.path.join(FIX, "ironic-scripts", "check-chart-version-moved.py")).read()
+CASES += [
+    ("extensionless hook with a bare push", {"a.yaml": steps(ACT_USE), "hack/release-preflight": HOOK}, False,
+     "hack/release-preflight:3: a bare `helm push` in a script", "shebang-select"),
+    ("extensionless #!/bin/sh push", {"a.yaml": steps(ACT_USE), "bin/release": "#!/bin/sh\noras push ghcr.io/x/y:1 a.tgz\n"}, False,
+     "bin/release:2: a bare `oras push` in a script", "shebang-select"),
+    ("extensionless python naming the command", {"a.yaml": steps(ACT_USE), "scripts/check-version": PY_MSG}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None, {"shebang_naive": True}),
+    ("ironic's check-chart-version-moved.py", {"a.yaml": steps(ACT_USE), "scripts/check-chart-version-moved.py": IRONIC_PY}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None, {"shebang_naive": True}),
+    ("the same file without its extension", {"a.yaml": steps(ACT_USE), "scripts/check-chart-version-moved": IRONIC_PY}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None, {"shebang_naive": True}),
+]
+
 NAIVE_BODY = """owner = target.split("/", 1)[0].lower()
 if owner != caller_owner and "secrets: inherit" in "\\n".join(lines):
     inherits.append("%s: naive text search found secrets: inherit" % where)"""
@@ -339,8 +488,32 @@ def opts(case):
     return case[5] if len(case) > 5 else {}
 
 
-def run(script, files, caller=CALLER):
-    with tempfile.TemporaryDirectory() as repo:
+FAKE_GIT = r"""#!/usr/bin/env bash
+# Serves recorded `git ls-remote --tags` listings (fixtures/tags) to the step, so its cases need no network.
+if [ "${1:-}" = ls-remote ] && [ "${2:-}" = --tags ]; then
+  case "${FAKE_GIT_MODE:-}" in
+    fail) echo "fatal: unable to access '$3': Could not resolve host: github.com" >&2; exit 128 ;;
+    empty) exit 0 ;;
+  esac
+  repo="${3#https://github.com/}"
+  f="${TAGS_DIR}/${repo//\//__}.txt"
+  [ -f "$f" ] || { echo "fatal: repository '$3' not found" >&2; exit 128; }
+  grep -v '^#' "$f"
+  exit 0
+fi
+echo "fake git: only ls-remote --tags is served" >&2
+exit 2
+"""
+
+
+def run(script, files, caller=CALLER, git=""):
+    return run_rc(script, files, caller, git)[:2]
+
+
+def run_rc(script, files, caller=CALLER, git=""):
+    with tempfile.TemporaryDirectory() as repo, tempfile.TemporaryDirectory() as bindir:
+        open(os.path.join(bindir, "git"), "w").write(FAKE_GIT)
+        os.chmod(os.path.join(bindir, "git"), 0o755)
         if files is not None:
             wf = os.path.join(repo, ".github", "workflows")
             os.makedirs(wf)
@@ -351,10 +524,11 @@ def run(script, files, caller=CALLER):
                 open(p, "w").write(text)
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as f:
             f.write(script)
-        env = dict(os.environ, WORKDIR=repo, CALLER=caller)
+        env = dict(os.environ, WORKDIR=repo, CALLER=caller, PATH=bindir + os.pathsep + os.environ["PATH"],
+                   TAGS_DIR=os.path.join(FIX, "tags"), FAKE_GIT_MODE=git)
         p = subprocess.run(["bash", f.name], env=env, capture_output=True, text=True)
         os.unlink(f.name)
-        return p.returncode == 0, p.stdout + p.stderr
+        return p.returncode == 0, p.stdout + p.stderr, p.returncode
 
 
 def main():
@@ -362,25 +536,29 @@ def main():
     failures = 0
     for case in CASES:
         name, files, want_ok, want_text = case[:4]
-        ok, out = run(script, files, opts(case).get("caller", CALLER))
+        ok, out, rc = run_rc(script, files, opts(case).get("caller", CALLER), opts(case).get("git", ""))
         absent = opts(case).get("absent")
         good = ok == want_ok and want_text in out and not (absent and absent in out)
+        if "exit" in opts(case):
+            good = good and rc == opts(case)["exit"]
         failures += not good
-        print("%s  %-30s exit=%s  (want %s, %r)" % ("ok  " if good else "FAIL", name, "0" if ok else "1",
+        print("%s  %-30s exit=%d  (want %s, %r)" % ("ok  " if good else "FAIL", name, rc,
+                                                     ("exit %d" % opts(case)["exit"]) if "exit" in opts(case) else
                                                      "success" if want_ok else "failure", want_text))
         if not good:
             print("      output: " + out.strip().replace("\n", "\n              "))
     blocks = ("sha-check", "comment-check", "float-form", "inherit-check", "float-accept",
               "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch",
               "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable",
-              "script-scan")
+              "script-scan", "shebang-select", "agreement-check", "step-scope", "other-pin", "quote-mention",
+              "phrase-required", "deictic-history", "tag-filter", "listing-control", "referent")
     for block in blocks:
         mutant = without(script, block)
         for case in CASES:
             name, files, want_ok, _, tests = case[:5]
             if tests != block or name == "one bad among good":
                 continue
-            ok, out = run(mutant, files, opts(case).get("caller", CALLER))
+            ok, out = run(mutant, files, opts(case).get("caller", CALLER), opts(case).get("git", ""))
             why = opts(case).get("mutant_text")
             good = ok != want_ok and (not why or why in out)
             failures += not good
@@ -402,6 +580,21 @@ def main():
         print("%s  naive search  %-30s %s" % ("ok  " if good else "FAIL", case[0],
                                               "refused, so the case tells the key from a mention" if good else
                                               "NOT REFUSED: the case does not exercise the difference"))
+    # Selecting every shebang would read a python file as shell: the python cases must be refused by that mutant,
+    # so they are shown to test the shell match rather than pass for lack of anything to read.
+    pattern = 'SHELL_SHEBANG = re.compile(r"^#!.*\\b(ba|da|k|z)?sh\\b")'
+    if script.count(pattern) != 1:
+        sys.exit("FAIL: the shebang pattern is not in the step exactly once; the mutation cannot be made")
+    any_shebang = script.replace(pattern, 'SHELL_SHEBANG = re.compile(r"^#!")')
+    for case in CASES:
+        if not opts(case).get("shebang_naive"):
+            continue
+        ok, out = run(any_shebang, case[1], opts(case).get("caller", CALLER))
+        good = not ok and "a bare `helm push` in a script" in out
+        failures += not good
+        print("%s  any shebang  %-30s %s" % ("ok  " if good else "FAIL", case[0],
+                                             "refused, so the case tests the shell match" if good else
+                                             "NOT REFUSED: the case does not exercise the shell match"))
     print("%d case(s) and their mutants, %d failure(s)" % (len(CASES), failures))
     return 1 if failures else 0
 

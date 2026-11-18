@@ -1,0 +1,228 @@
+name: lint
+
+# Lints and renders every chart on pull requests, and validates that each chart's values.yaml
+# satisfies its values.schema.json. Shape-agnostic: charts are discovered by locating each
+# Chart.yaml (skipping vendored subcharts under charts/), so it works for any repo layout.
+on:
+  pull_request:
+    paths:
+      - "**"
+  workflow_dispatch:
+
+jobs:
+  lint-docs:
+    # `@main` IS DELIBERATE HERE. DO NOT PIN THIS TO A SHA.
+    #
+    # Diego decided this on 2026-11-07 and reaffirmed it on 2026-11-18, both
+    # times asked DIRECTLY rather than through a relay -- because both times it
+    # arrived as "the org standard now says pin everything", and a relayed
+    # decision is not the decision.
+    #
+    # THE REASON IS A TRUST BOUNDARY, NOT A PREFERENCE. `krateo-platformops/.github`
+    # is owned by the org that owns this repo: pinning it buys no review gate the
+    # org does not already have, and costs a PR in every consumer for every
+    # shared CI fix. Floating on the branch is how one fix reaches 51 repos
+    # without 51 pull requests.
+    #
+    # THE CHARTS PUBLISHER IS PINNED, AND THAT IS CONSISTENT RATHER THAN
+    # CONTRADICTORY: `krateo-blueprints/charts/.../publish-chart.yaml` takes an
+    # org-wide write-scoped secret from 29 callers, so a credential crosses a
+    # trust boundary there. See release-tag.yaml, pinned to a full SHA on
+    # purpose. Different exposure, different answer -- do not apply one rule to
+    # both.
+    #
+    # RULE 9's ENFORCEMENT JOB NOW UNDERSTANDS THIS, SO WE CALL IT. The previous
+    # version of this paragraph said the job "CANNOT be adopted here" and "this
+    # repo does not call it" -- true when written, false since charts 1.3.0.
+    # `pinned-uses.yaml` gained a recorded-float form, and the reason may be the
+    # comment block immediately above the `uses:` line (`reason_above`, same job,
+    # no blank line between), which is what this block is. So the float is now
+    # ENFORCED AS DELIBERATE rather than merely explained: an unrecorded float
+    # fails, a float of a non-org-owned reusable fails, and the publisher can
+    # never float at all.
+    #
+    # The marker's date is when the float was recorded here, not when the
+    # decision was taken -- the decision dates are above.
+    uses: krateo-platformops/.github/.github/workflows/lint-docs.yaml@main # floating: 2026-11-18
+
+  # 1.4.2 IS TAKEN FOR A REASON, not for being newer: it scans `.sh`, `.mk` and
+  # Makefiles, not only workflow files. The openstack-as-a-service session found
+  # a bare `helm push` inside a script their workflows call, and 1.4.0's
+  # workflow-only scan passed it -- their repo was GREEN on 1.4.0 with the thing
+  # rule 14 forbids still in place. This repo measured 0 live `helm push` lines
+  # across 42 files in hack/, scripts/ and hack/lib/ before the bump, so this is
+  # the run that tests that claim under the wider rule rather than my own grep.
+  #
+  # RULE 9, ENFORCED. Pinned by commit SHA with a version comment, as the check
+  # itself requires -- adopted at charts 1.3.0, whose tag peels to this commit
+  # (verified here: `git/ref/tags/1.3.0` -> annotated tag -> 6168b42, and the
+  # file's sha256 matched the one published with it).
+  #
+  # It refuses an unrecorded float, a float of a reusable this org does not own,
+  # a float of the chart publisher (which takes an org-wide write token), and a
+  # `# floating` comment on a ref that is already a commit pin. The three
+  # deliberate floats in this repo carry `# floating: <date>` with their reason
+  # in the comment block above each one.
+  pinned-uses:
+    uses: krateo-blueprints/charts/.github/workflows/pinned-uses.yaml@aea92de356085f50ea45477a4e6ae2b026cd6b14 # 1.4.2
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      # Gating. release-tag attaches the stamped CompositionDefinition to a release that release-notes
+      # may create concurrently; the publisher must treat "already exists" as success and still fail on
+      # anything else. Runs against a stand-in gh, no network.
+      - name: Release asset publisher survives the release-notes race (hack/test-publish-release-assets.sh)
+        run: bash hack/test-publish-release-assets.sh
+
+      - name: Install Helm
+        uses: azure/setup-helm@v5
+
+      # A REAL GATE, unlike the render step below. README and docs/release.md
+      # have both claimed this workflow runs shellcheck since before it existed:
+      # `grep -ri shellcheck .github/` returned NOTHING. Two documents
+      # describing a check that runs nowhere is the same defect class this repo
+      # hunts in its own charts, sitting in the description of its own CI.
+      #
+      # It earns its place rather than satisfying the docs: wiring it up found
+      # three SC2034s, and one of them was not lint noise -- SENTINEL_PW in
+      # scripts/test-get-token.sh was declared for a refusal arm nobody ever
+      # wrote, so the password path's "names the missing var" assertion could
+      # not tell a correct message from one that always named the first
+      # variable. That arm exists now.
+      #
+      # NO `|| true` AND NO `continue-on-error`. The step below is explicitly
+      # informational because charts across repos may legitimately fail to
+      # render; a shell script either parses or does not, so there is no such
+      # excuse here.
+      - name: shellcheck every shipped script
+        run: |
+          set -euo pipefail
+          # The glob must match something, asserted rather than assumed -- an
+          # empty set would make this step pass having checked nothing, which
+          # is exactly what it replaced.
+          shopt -s nullglob
+          # hack/lib/*.sh is listed explicitly: hack/*.sh does NOT match a
+          # subdirectory, so hack/lib/wait.sh -- which three CI gates now depend
+          # on -- was not being checked at all. The glob looked complete.
+          files=(scripts/*.sh hack/*.sh hack/lib/*.sh)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "no shell scripts matched scripts/*.sh, hack/*.sh or hack/lib/*.sh."
+            echo "This step would pass having checked nothing. VOID, not a pass."
+            exit 3
+          fi
+          echo "shellcheck over ${#files[@]} script(s): ${files[*]}"
+          # -x follows `source`d files. Measured honestly: it is NOT what fixes
+          # SC1091 here -- adding hack/lib/*.sh to the glob is, because the
+          # warning was "not specified as input". -x is kept so the
+          # `# shellcheck source=` directives are actually honoured, and so this
+          # keeps working if the glob ever stops covering a sourced file.
+          shellcheck -x "${files[@]}"
+
+      - name: Stamp the CHART_VERSION placeholder for CI
+        run: |
+          find . -type f -name Chart.yaml -not -path '*/charts/*' -not -path './.git/*' \
+            -exec sed -i "s/CHART_VERSION/0.0.0-ci/g" {} +
+
+      # A REAL GATE over the rendered manifests, and HONEST ABOUT ITS REACH.
+      # README and docs/release.md claimed this workflow runs kubeconform; it
+      # ran nowhere. Wired up now, with the one thing a reader needs to know
+      # stated rather than buried:
+      #
+      #   THIS CHART RENDERS 6 ConfigMaps AND 6 RestDefinitions.
+      #   kubeconform has a schema for ConfigMap. It has NONE for
+      #   RestDefinition, which is a CRD kind owned by oasgen-provider.
+      #
+      # So `-skip RestDefinition` is NOT a convenience, it is the scope: this
+      # step validates the built-in half and cannot see the half that is the
+      # actual substance of the chart. `-ignore-missing-schemas` would have hid
+      # that behind a green tick -- a check unable to fail on what matters.
+      #
+      # The RestDefinitions are guarded instead by smoke.yaml applying them to
+      # a LIVE API server with the CRDs oasgen actually generated, which is
+      # strictly stronger than any schema store. We did NOT vendor a copy of
+      # oasgen's RestDefinition schema to close the gap: this repo already
+      # deleted a ported copy of their version normalizer for exactly that
+      # reason -- someone else's rule, maintained here, able to drift silently.
+      # Same family as kubeconform: both read the RENDERED chart and ask whether
+      # what it ships is internally coherent. kubeconform checks the manifests
+      # against the Kubernetes schemas; this checks each RestDefinition against
+      # the OAS document it names. It runs here rather than in `validate`
+      # because it needs helm, and its OAS is read out of the rendered
+      # ConfigMap -- chart/assets/*.yaml are Helm TEMPLATES and do not parse as
+      # YAML, so reading them directly is not an option.
+      - name: Install PyYAML for the shape screen
+        run: pip install --quiet pyyaml
+
+      - name: Every RestDefinition must agree with the OAS it names
+        run: python3 hack/check-restdefinition-shape.py
+
+      - name: kubeconform the rendered manifests (built-in kinds)
+        run: |
+          set -euo pipefail
+          KC_VERSION=v0.6.7
+          curl -fsSL -o /tmp/kubeconform.tar.gz \
+            "https://github.com/yannh/kubeconform/releases/download/${KC_VERSION}/kubeconform-linux-amd64.tar.gz"
+          tar -xzf /tmp/kubeconform.tar.gz -C /tmp kubeconform
+          /tmp/kubeconform -v
+          helm template nova ./chart --set nova.url=https://nova.invalid/v2.1/p > /tmp/rendered.yaml
+
+          # THE CHECK MUST REFUSE, OR IT IS DECORATION. nova.url is screened for
+          # a /v2.1/<projectId> path because a URL without one 404s every create,
+          # and since oasgen#818 a 404'd create latches `external-create-pending`
+          # with no road back on a chart that declares no findby. A screen nobody
+          # exercises is how that protection quietly stops existing.
+          #
+          # BOTH DIRECTIONS, because a `fail` that always fires would pass the
+          # negative arm alone and break every install.
+          for bad in \
+            "https://compute.example.net/v2.1" \
+            "https://compute.example.net/v2.1/" \
+            "https://compute.example.net/compute" ; do
+            if helm template nova ./chart --set nova.url="$bad" > /dev/null 2>&1; then
+              echo "nova.url screen did NOT refuse $bad -- it is decoration"
+              exit 1
+            fi
+          done
+          echo "nova.url screen refused 3 malformed URLs"
+          for good in \
+            "https://compute.gra11.cloud.ovh.net/v2.1/abc123" \
+            "http://10.96.0.5:8774/v2.1/proj" ; do
+            if ! helm template nova ./chart --set nova.url="$good" > /dev/null 2>&1; then
+              echo "nova.url screen REFUSED a documented form: $good"
+              exit 1
+            fi
+          done
+          echo "nova.url screen accepted both documented forms"
+          # A CHECK THAT CANNOT CHECK NOTHING: assert the render produced the
+          # objects we expect before validating them. An empty or truncated
+          # render would otherwise validate cleanly and mean nothing.
+          total=$(grep -cE '^kind:' /tmp/rendered.yaml || true)
+          builtin=$(grep -cE '^kind: ConfigMap' /tmp/rendered.yaml || true)
+          echo "rendered $total objects, of which $builtin are built-in kinds"
+          if [ "$total" -lt 2 ] || [ "$builtin" -lt 1 ]; then
+            echo "the render produced $total objects and $builtin built-in kinds."
+            echo "There is nothing here for kubeconform to validate, so a clean"
+            echo "result would be worthless. VOID, not a pass."
+            exit 3
+          fi
+          /tmp/kubeconform -strict -summary -skip RestDefinition /tmp/rendered.yaml
+
+      - name: helm template + lint every chart (informational)
+        run: |
+          set -uo pipefail
+          # Informational only: charts across repos legitimately require values or private
+          # dependencies to render, so render/lint issues are surfaced as warnings, never failing
+          # the build. The lint-docs job above is the authoritative gate.
+          while IFS= read -r -d '' cf; do
+            dir=$(dirname "$cf")
+            echo "::group::${dir}"
+            helm dependency update "$dir" 2>/dev/null || true
+            helm template release "$dir" >/dev/null \
+              || echo "::warning::helm template failed for ${dir} (may require values or private deps)"
+            helm lint "$dir" || true
+            echo "::endgroup::"
+          done < <(find . -type f -name Chart.yaml -not -path '*/charts/*' -not -path './.git/*' -print0)

@@ -1,0 +1,3 @@
+# git ls-remote --tags https://github.com/krateo-platformops/.github, recorded 2026-11-18, complete, 2 rows.
+0b109bb3f15f1f80d97c0aa1f1dcae6eb070fbeb	refs/tags/1.0.0
+e1d3e99215e80ae56eca4a67e9e061b2c73168b8	refs/tags/1.0.0^{}
