@@ -331,9 +331,9 @@ No release reported any of this.
          YYYY-MM-DD`, a recorded float), and `action.yml` files. Another product's version that equals a
          tag of the pinned repository is compared as though it were the pin's unless its repository is named
          explicitly; reword it if it is flagged. A repository named only by a bare word is not attributed.
-         A deictic phrase followed by a past-tense verb ("This pin sat at 1.0.4 while ...") is read as
-         history and not compared, so a false past-tense claim ("This pin was moved to 1.0.2 in #12", when it
-         never was) passes: past-tense claims are not verified.
+         A deictic phrase followed by a past-tense verb ("This pin sat at 1.0.4 ...") is read as history and
+         binds nothing, so a false past-tense claim is not caught: "This pin was moved to 1.0.2 in #12" over
+         a `# 1.4.3` pin passes when it never happened (a test case records this limit).
 
      - **Exclusion is not grouping.** The defect is charts pins excluded from a group **and** in no
        group of their own. An exclusion paired with a dedicated charts group is the fixed state.
