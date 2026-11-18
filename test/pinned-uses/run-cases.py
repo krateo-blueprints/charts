@@ -414,7 +414,7 @@ CASES += [
     ("ironic main 02ff492, its history sentence", fixture("ironic-02ff492"), True, AGREE_OK, "deictic-history"),
     # A past-tense claim is read as history and is not verified: this one is false (the pin never sat at 1.0.2), and it
     # passes. That is a stated limit (PUBLISHING.md rule 9), recorded here so a change to it is a decision.
-    ("false history in the past tense", {"a.yaml": STALE.replace("Pinned to the commit tag 1.0.2 points at.", "This pin was moved to 1.0.2 in #12.")}, True,
+    ("known limit: false history in the past tense", {"a.yaml": STALE.replace("Pinned to the commit tag 1.0.2 points at.", "This pin was moved to 1.0.2 in #12.").replace("# 1.4.2", "# 1.4.3")}, True,
      AGREE_OK, "deictic-history"),
     ("'this pin is' over a newer pin", {"a.yaml": STALE.replace("Pinned to the commit tag 1.0.2 points at.", "This pin is the commit 1.0.2 carries.")}, False,
      "a.yaml:3: names 1.0.2 of krateo-blueprints/charts", "agreement-check"),
