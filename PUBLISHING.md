@@ -275,16 +275,23 @@ No release reported any of this.
      YYYY-MM-DD` pin has no tag for Dependabot to follow; it is moved by hand, deliberately.
      Three lessons from moving these pins (openstack-ironic-operator-kog, 2026-11-18):
      - **Record the command, not the output.** A pin's SHA appears exactly once, on its `uses:` line.
-       A comment that repeats the verified SHA ("verified: 1.0.1 → 36ea357") is a second copy that
-       Dependabot does not update, and it goes stale on the next bump. ironic's did, twice. Record how
-       to re-resolve the pin instead:
+       The defect is a comment line holding a **40-hex SHA equal to a `uses:` pin's SHA in the same
+       file**, for example the pinned `1e6210ab…` repeated in a comment above it
+       (openstack-ironic-operator-kog `release-chart.yaml:287` before its #126). Dependabot does not
+       update that copy, so it goes stale on the next bump. Short references to commits that nothing
+       pins (a measurement baseline, a history note, an upstream ref) are provenance, and they're
+       welcome. The test is `^\s*(?:-\s+)?uses:\s*\S+@([0-9a-f]{40})\b` over the file's
+       uncommented lines for its pins, then a comment's 40-hex match counts only if it is in that set.
+       A copy of the pin is replaced by how to re-resolve it:
 
        ```yaml
            # Resolve with: git ls-remote https://github.com/krateo-blueprints/charts 'refs/tags/X.Y.Z^{}'
            uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@<sha> # X.Y.Z
        ```
 
-     - **Exclusion is not grouping.** Excluding `krateo-blueprints/charts*` from a Dependabot group,
+     - **Exclusion is not grouping.** The defect is charts pins excluded from a group **and** in no
+       group of their own. An exclusion paired with a dedicated charts group is the fixed state.
+       Excluding `krateo-blueprints/charts*` from a Dependabot group,
        so that charts pins are reviewed separately, makes each charts pin its own pull request. Merged
        one at a time, they drift apart, and the repository pins two charts versions. Use a dedicated
        group instead, so all of a repository's charts pins move together in one pull request:
