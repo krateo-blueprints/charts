@@ -187,7 +187,7 @@ CASES += [
     ("shared action abbreviated sha", {"a.yaml": steps("- uses: %s@f25d6b5 # main 2026-11-17" % ACT)}, False, "1 shared-action uses", "action-scope"),
     ("shared action, owner case", {"a.yaml": steps("- uses: Krateo-Platformops/.GitHub/.github/actions/chart-push@main # main 2026-11-17")}, False,
      "1 not pinned", "action-scope"),
-    ("shared action, no comment", {"a.yaml": steps("- uses: %s@%s" % (ACT, SHA))}, False, "needs `# X.Y.Z`, or `# main YYYY-MM-DD`", "action-comment"),
+    ("shared action, no comment", {"a.yaml": steps("- uses: %s@%s" % (ACT, SHA))}, False, "the shared chart-push action needs `# X.Y.Z`", "action-comment"),
     ("shared action, comment not a version", {"a.yaml": steps("- uses: %s@%s # latest" % (ACT, SHA))}, False,
      "has comment 'latest'", "action-comment"),
     ("shared action, float on a sha", {"a.yaml": steps("- uses: %s@%s # floating: 2026-11-18 follow main" % (ACT, SHA))}, False,
