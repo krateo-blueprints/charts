@@ -222,6 +222,21 @@ No release reported any of this.
           - preflight   # and the token check (rule 7)
     ```
 
+13. **Pre-releases are never indexed.** The publisher refuses any chart whose version is not a
+    plain `X.Y.Z`: no `v`, no leading zeros, no `-prerelease`, no `+build`. Every channel is
+    covered. An index entry is never removed, and the Marketplace offers the live index's versions
+    newest first, so a pre-release that got in would be offered to users permanently.
+
+    A repository may still publish pre-releases to GHCR, at the same
+    `oci://ghcr.io/krateo-blueprints/charts/<name>` path, to verify a commit before tagging it.
+    krateo-openstack-blueprint's `prerelease.yaml` does this, at `X.Y.Z-main.g<sha7>`. Such a
+    workflow doesn't call this publisher and doesn't hold `CHARTS_PUBLISH_TOKEN`. Helm resolves an
+    OCI chart with no `--version` to the newest version that isn't a pre-release, so it installs a
+    pre-release only when someone asks for that exact version. This rule is the second barrier: a
+    pre-release handed to the publisher by mistake fails the content gate before anything is
+    stored. Measured on 2026-11-18, all 3,186 entries in the `blueprints` and `operators` indexes
+    were already plain `X.Y.Z`, so the rule refuses nothing that has ever been published.
+
 ## Scope
 
 This standard covers every repository in the krateo-blueprints organisation. builder-scaffold also
