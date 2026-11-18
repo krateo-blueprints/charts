@@ -32,10 +32,10 @@ name: test-pinned-uses
 #     refused, and so is a recorded float there (block float-reusable), inline or with the reason above;
 #     a pinned sibling passes; the same float in a non-reusable, or with workflow_call only in a
 #     comment, is still accepted.
-#     Rule 14 in scripts (1.4.1): a bare push in a *.sh (hack/, deep in the tree, inside a retry loop) is
-#     refused (block script-scan), a commented one passes (push-comment), a script calling the action's
-#     push.sh passes, and the summary counts the scripts scanned (0 when there are none; a .py is not
-#     read). A dated pin into krateo-platformops/.github, tagged since 1.0.0, passes with a notice; a
+#     Rule 14 in scripts (1.4.1): a bare push in a *.sh (hack/, deep in the tree, inside a retry loop, in a
+#     heredoc, which runs) or a Makefile / *.mk (including `@helm push`) is refused (block script-scan); a
+#     commented one in either passes (push-comment); a script calling the action's push.sh passes; and the
+#     summary counts the files scanned (0 when there are none; a .py, docstring included, is not read). A dated pin into krateo-platformops/.github, tagged since 1.0.0, passes with a notice; a
 #     `# 1.0.0` pin gets none.
 #   - this-repository: a real call through `uses:`, on this repository's own workflows, which rule 9
 #     covers like any caller's.

@@ -14,12 +14,14 @@ name: pinned-uses
 # repository's reusable workflow (`owner/repo/.github/workflows/<file>@<ref>`). It must have:
 #   - a ref of exactly 40 lowercase hex characters, a commit. A tag or branch can move. An abbreviated
 #     SHA is refused by GitHub for reusable workflows anyway.
-#   - a trailing comment naming what that commit is: `# X.Y.Z` (the tag it carries), or, for a
-#     repository that publishes no tags yet, `# main YYYY-MM-DD`, the date of the main commit
-#     pinned. Without the comment nobody can tell what is pinned or whether it is stale. The dated
-#     form is transitional: krateo-platformops/.github tagged 1.0.0 on 2026-11-18 (charts#23), so a
-#     dated pin into it still passes but is printed as a notice and counted in the summary, to be
-#     moved to `# X.Y.Z`.
+#   - a trailing comment naming what that commit is. The preferred form is `# X.Y.Z`, the tag the
+#     commit carries: Dependabot advances it. `# main YYYY-MM-DD` (the date of the main commit
+#     pinned) exists only for a publisher with no tags. Dependabot cannot advance such a pin, so it
+#     is transitional: a repository on this form is waiting on its publisher to tag, and moves to
+#     `# X.Y.Z` when it does. krateo-platformops/.github tagged 1.0.0 on 2026-11-18 (charts#23), so
+#     the preferred form for it is now `# 1.0.0`. A dated pin into it still passes, but is printed as
+#     a notice and counted in the summary. Without a comment nobody can tell what is pinned or whether
+#     it is stale.
 # Inside a shared reusable (a file with `on: workflow_call`) the same holds for what it calls, and a float is refused
 # there: a caller that pins the reusable freezes only the reusable's own text, so a `@main` inside it would still move
 # under every pinned caller (found by the github-provider-kog and azuredevops-provider-kog sessions, 2026-11-18).
@@ -58,8 +60,8 @@ name: pinned-uses
 #     refused: charts are pushed through that action, which survives GHCR's tag read-after-write
 #     race (sha256:<digest>: not found after an accepted PUT).
 #     A line whose first non-blank character is `#`, a YAML or shell comment, is not a push. The check
-#     is textual and reads the workflow files and every *.sh in the checkout (1.4.1: a script the
-#     workflow runs pushed bare and passed 1.4.0); a Makefile or a .py, or a push through a variable
+#     is textual and reads the workflow files and every *.sh, *.mk and Makefile in the checkout (1.4.1:
+#     a script the workflow runs pushed bare and passed 1.4.0); a .py, or a push through a variable
 #     (`$HELM push`), is not seen. The summary counts the scripts scanned. It cannot tell an `oras push` of a chart from
 #     one of another artifact, so it refuses both; a non-chart `oras push` is decided in
 #     PUBLISHING.md first.
@@ -125,7 +127,8 @@ jobs:
           # The key itself, never a comment that quotes it: a line whose first non-blank is `#` cannot match.
           INHERIT = re.compile(r"""^(\s*)secrets:\s*(['"]?)inherit\2\s*(?:#.*)?$""")
           # A bare chart push (rule 14): `helm push` / `oras push` as a word, not part of another word.
-          PUSH = re.compile(r"""(^|[\s;&|(`'"])(helm|oras)\s+push\b""")
+          # `@` too: a Makefile recipe line may start with it (`@helm push ...`).
+          PUSH = re.compile(r"""(^|[\s;&|(`'"@])(helm|oras)\s+push\b""")
           CHART_PUSH_ACTION = "krateo-platformops/.github/.github/actions/chart-push"
 
 
@@ -301,13 +304,16 @@ jobs:
                   if not SHA.match(ref):
                       bad.append("%s is pinned to %r, not a 40-hex commit SHA (a deliberate float of a branch says `# floating: YYYY-MM-DD <reason>`)" % (where, ref))
                   # END sha-check
-          # Rule 14 in scripts too: a bare push inside a script a workflow runs is the same push. Every *.sh in the
-          # checkout is read, comment lines skipped (krateo-openstack-blueprint's hack/publish-charts.sh, 2026-11-18,
+          # Rule 14 in scripts too: a bare push inside a script a workflow runs is the same push. Every *.sh, *.mk
+          # and Makefile in the checkout is read, comment lines skipped; a heredoc line is judged live, since it runs (krateo-openstack-blueprint's hack/publish-charts.sh, 2026-11-18,
           # passed 1.4.0 by being outside .github/workflows).
           scripts = []
           for d, ds, fs in os.walk("."):
               ds[:] = sorted(x for x in ds if x not in (".git", "node_modules"))
-              scripts += [os.path.normpath(os.path.join(d, f)) for f in fs if f.endswith(".sh")]
+              # Where a push actually executes: shell scripts and Makefiles. A .py is not read: a line filter would
+              # count docstring prose as code (the nova-kog session), and no repository runs helm from Python today.
+              scripts += [os.path.normpath(os.path.join(d, f)) for f in fs
+                          if f.endswith((".sh", ".mk")) or f in ("Makefile", "makefile", "GNUmakefile")]
           scripts.sort()
           # BEGIN script-scan (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
           for path in scripts:

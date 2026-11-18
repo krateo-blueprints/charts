@@ -174,15 +174,21 @@ No release reported any of this.
    `security.yml` runs with `security-events: write`. A movable ref also changes a caller's CI with no
    commit in the caller, so a green run can't be reproduced. A SHA can't move. On 2026-11-18, 136
    reusable `uses:` in 51 repositories were movable, the publisher itself `@main` in 12 (#20).
-   - **The comment:** `# X.Y.Z`, the tag that commit carries. A repository that publishes no tags yet
-     is pinned to a commit on its `main` with the comment `# main YYYY-MM-DD`, the date of that
-     commit, until it tags its workflows. Then callers move to `# X.Y.Z`. The dated form is
-     **transitional**: the dated pins are replaced, not kept as a second way to pin.
+   - **The comment:** `# X.Y.Z`, the tag that commit carries, is the preferred form, because
+     Dependabot advances it. `# main YYYY-MM-DD`, the date of a commit on the publisher's `main`,
+     exists only for a publisher with no tags.
+     - **Why it is transitional:** Dependabot cannot advance a dated pin. A repository on the dated
+       form is waiting on its publisher to tag, and moves to `# X.Y.Z` when it does. The dated pins are
+       then replaced, not kept as a second way to pin.
+     - **Rewrite the explanation too:** a caller whose comment explains the dated form ("no tags yet")
+       now holds a stale explanation. The re-pin rewrites that comment as well as the commit.
      krateo-platformops/.github published its first tag, `1.0.0`, on 2026-11-18. The annotated tag
      object is `0b109bb3f15f1f80d97c0aa1f1dcae6eb070fbeb`, and it peels to
      `e1d3e99215e80ae56eca4a67e9e061b2c73168b8`, the merge of its #64 (#23). So:
-     - a `# main YYYY-MM-DD` pin into it moves to `# X.Y.Z`. At `e1d3e99` the change is the comment
-       alone;
+     - the preferred form for it is now `# 1.0.0`, so a `# main YYYY-MM-DD` pin into it moves to
+       `# X.Y.Z`. At `e1d3e99` the change is the comment alone;
+     - resolve the tag with `^{}`, both when pinning and when reviewing a pin. `refs/tags/1.0.0` is the
+       tag object `0b109bb…`, not the commit, and comparing a pin against it shows a false mismatch;
      - Dependabot advances the pin from there;
      - `pinned-uses.yaml` still accepts the dated form, but prints a notice for every dated pin into
        a tagged repository and counts them in its summary.
@@ -407,14 +413,17 @@ No release reported any of this.
       with no new job. It refuses every uncommented line that runs either command; a line that is a
       YAML or shell comment is not a push. The check is textual:
       - It refuses prose that names a command, such as a step name or an `echo` message. Reword it.
-      - **Scripts are read too.** It reads every workflow file, and also every `*.sh` anywhere in the
-        checkout, so a push inside a script a workflow runs is refused like one in a `run:` block.
+      - **Scripts are read too.** It reads every workflow file, and also every `*.sh`, `*.mk` and
+        `Makefile` anywhere in the checkout. So a push inside a script or a make target a workflow runs
+        is refused like one in a `run:` block. A heredoc line counts as live, since it runs.
         krateo-openstack-blueprint's `hack/publish-charts.sh` passed 1.4.0 that way, until 1.4.1
         closed the gap.
         - In a script, use locate mode: `bash "${CHART_PUSH}" <tgz> <oci repo>`, with CHART_PUSH
           exported from the action's `path` output.
-        - Other files are not read: a Makefile, a Python script that runs it, or a push through a
-          variable (`$HELM push`). Such pushes are replaced by the action, not hidden from the check.
+        - Other files are not read: a Python script that runs it, or a push through a variable
+          (`$HELM push`). Such pushes are replaced by the action, not hidden from the check. A `.py` is
+          left out because a comment-line filter would count docstring prose as code, and the 2026-11-18
+          scan of all 103 repositories found no `.py` that runs helm.
         - The summary line counts the scripts scanned, so "0 script(s)" shows when there was
           nothing to read.
       - It can't tell an `oras push` of a chart from one of another artifact, so a non-chart

@@ -278,7 +278,19 @@ CASES += [
     ("script through the action's push.sh", {"a.yaml": steps(ACT_USE), "hack/publish-charts.sh": 'bash "${CHART_PUSH}" "$t" oci://r/p\n'}, True,
      "0 bare chart push(es) (PUBLISHING.md rule 14), 1 script(s) scanned", None),
     ("no scripts at all", {"a.yaml": steps(ACT_USE)}, True, "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None),
-    # Out of scope by design: only *.sh files are read, beside the workflows.
+    # Makefiles are read too (a recipe line may start with `@`); a commented one is not a push.
+    ("Makefile push", {"a.yaml": steps(ACT_USE), "Makefile": "publish:\n\t@for c in dist/*.tgz; do helm push $$c oci://r/p; done\n"}, False,
+     "Makefile:2: a bare `helm push` in a script", "script-scan"),
+    ("Makefile, @helm push", {"a.yaml": steps(ACT_USE), "tools/release.mk": "push:\n\t@helm push dist/x.tgz oci://r/p\n"}, False,
+     "tools/release.mk:2: a bare `helm push` in a script", "script-scan"),
+    ("Makefile, commented push", {"a.yaml": steps(ACT_USE), "Makefile": "# publish: helm push dist/x.tgz oci://r/p\nall:\n\techo ok\n"}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 1 script(s) scanned", "push-comment"),
+    # A heredoc line is live: it runs.
+    ("heredoc in a script", {"a.yaml": steps(ACT_USE), "hack/gen.sh": "cat <<'EOF' > run.sh\nhelm push x.tgz oci://r/p\nEOF\nbash run.sh\n"}, False,
+     "hack/gen.sh:2: a bare `helm push` in a script", "script-scan"),
+    # Out of scope by design: a .py is not read (a line filter would read docstring prose as code).
+    ("a .py docstring naming the command", {"a.yaml": steps(ACT_USE), "hack/gate.py": '"""Refuses a bare\nhelm push in any workflow."""\n'}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None),
     ("a .py naming the command", {"a.yaml": steps(ACT_USE), "hack/gate.py": 'assert "helm push" not in text\n'}, True, "0 script(s) scanned", None),
     # krateo-platformops/.github is tagged (1.0.0): a dated pin into it still passes, with a notice.
     ("dated pin into a tagged repo", {"a.yaml": steps(ACT_USE)}, True, "1 dated pin(s) into a tagged repository", None),
