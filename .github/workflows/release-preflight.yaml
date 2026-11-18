@@ -18,6 +18,13 @@ name: release-preflight
 #
 # The hook runs on the caller's checkout, at the commit that triggered the caller (the tag's commit on
 # a tag push), with read-only contents permission and no secrets.
+#
+# Before the hook, the version itself is checked against rule 13's pattern, the one publish-chart.yaml
+# refuses at index time: a plain X.Y.Z, no `v`, no leading zeros, no -prerelease, no +build. publish-chart
+# runs after the caller's GHCR push, so a version only it refused would be pushed and never indexed, the
+# half-state this preflight exists to prevent. github-provider-kog#111 found its own earlier check,
+# `^[0-9]+\.[0-9]+\.[0-9]+$`, accepting `0.015.0`. One pattern, checked here before any push; the
+# definition is byte-identical in both files, and test/release-preflight/run-cases.py fails if they differ.
 
 on:
   workflow_call:
@@ -56,6 +63,13 @@ jobs:
             echo "::error::release-preflight was called with an empty version; nothing to check it against."
             exit 1
           fi
+          # BEGIN rule-13 preflight check (test/release-preflight/run-cases.py deletes or loosens it to prove its cases see it)
+          PLAIN_VERSION='^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$'
+          if ! [[ "${VERSION}" =~ $PLAIN_VERSION ]]; then
+            echo "::error::release version '${VERSION}' is not a plain X.Y.Z (no v, no leading zeros, no -prerelease, no +build). publish-chart.yaml would refuse to index it after the GHCR push, so the release is refused here, before anything is pushed (PUBLISHING.md rules 12 and 13)."
+            exit 1
+          fi
+          # END rule-13 preflight check
           cd "${WORKDIR}"
           if [ ! -e "${hook}" ] && [ ! -L "${hook}" ]; then
             echo "No ${hook} in ${WORKDIR}: this repository declares no release preflight. Passing."
