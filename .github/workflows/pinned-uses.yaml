@@ -86,13 +86,20 @@ name: pinned-uses
 #     --tags` (once per repository per run); a sentence naming another pin of the file, and not this one, is
 #     that pin's;
 #   - it disagrees when the bound text names such versions and none is the pin's. History naming the current pin
-#     agrees ("1.0.1 lost a race, 1.0.3 <- pinned here" over `# 1.0.3`).
+#     agrees ("1.0.1 lost a race, 1.0.3 <- pinned here" over `# 1.0.3`);
+#   - a version belongs to the repository named explicitly nearest it in its sentence, else last before it in its
+#     paragraph, else the pinned one. Named explicitly means a github.com/owner/repo URL, or owner/repo for one of
+#     the two orgs or an owner this file pins from (not a file name). A deictic sentence that gives the pin another
+#     repository's version disagrees by referent: charts "1.0.3 <- pinned here" over a krateo-platformops/.github
+#     `# 1.0.3`, or charts 1.0.0 over its `# 1.0.0`, though the numbers match (the openstack-nova-operator-kog
+#     session). A bare word ("charts", "platformops") is not a name: it is a common noun as often as a repository.
 # The FAIL line names the comment line, the pin's line and version, the scope and its lines, and the listing's
 # count: distinct tags, and how many are annotated (the `^{}` rows), not the raw row count. An empty or failed
 # listing is a failed measurement: exit 2, never a pass, never a skip.
 # Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
-# YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read; and another product's version
-# that equals a tag of the pinned repository is compared as though it were the pin's.
+# YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read; another product's version that
+# equals a tag of the pinned repository is compared as though it were the pin's unless the sentence or paragraph
+# names that product's repository explicitly; and a repository named only by a bare word is not attributed.
 #
 # Also checked, on the same `uses:`: no `secrets: inherit` when the reusable's owner is not the
 # caller's owner. `inherit` passes nothing to a reusable in another organisation, and nothing says so:
@@ -385,14 +392,19 @@ jobs:
           #     the pinned repository, listed with `git ls-remote --tags` (once per repository per run). The repository's
           #     own chart version, or another product's release, is not this pin's. A sentence that names another pin of
           #     the same file and not this one is left to that pin.
+          #   - A version belongs to the repository named explicitly nearest it in its sentence, else last before it in its
+          #     paragraph, else the pinned one (a github.com URL, or owner/repo for the two orgs or an owner this file
+          #     pins from; not a file name, not a bare word). A deictic sentence giving the pin another repository's
+          #     version disagrees by referent, even when the numbers match (charts 1.0.0 over platformops `# 1.0.0`).
           #   - A bound text disagrees when it names versions of the pinned thing and none is the pin's (a major-only pin,
           #     `# v5`, agrees with any v5.x.y). History that names the current pin agrees: "1.0.1 lost a race, 1.0.3 <-
           #     pinned here" over `# 1.0.3`.
           #   - The tag listing is a measurement: an empty or failed one is an error (exit 2), never a pass and never a
           #     skip. Its count is the number of distinct tags, not counting the `^{}` rows of annotated tags.
           # Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
-          # YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read (only .github/workflows); and
-          # another product's version that equals a tag of the pinned repository is compared as if it were the pin's.
+          # YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read (only .github/workflows);
+          # another product's version that equals a tag of the pinned repository is compared as if it were the pin's,
+          # unless its repository is named explicitly; and a repository named only by a bare word is not attributed.
           AGREE_PIN = re.compile(r"""^(\s*)(-\s+)?uses:\s*['"]?([^'"\s#@]+)@([0-9a-f]{40})['"]?\s*(?:#\s*(.*))?$""")
           AGREE_TOKEN = re.compile(r"(?<![\w.])v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\w])(?!\.[0-9])")
           AGREE_PIN_VERSION = re.compile(r"^v?([0-9]+(?:\.[0-9]+){0,2})\b")
@@ -403,6 +415,10 @@ jobs:
           AGREE_QUOTED = re.compile(r'"[^"]*"|`[^`]*`|“[^”]*”')
           AGREE_KEY = re.compile(r"^(\s*)([A-Za-z0-9_.-]+):(\s|$)")
           AGREE_ITEM = re.compile(r"^(\s*)-(\s|$)")
+          # An explicit repository: a github.com URL, or owner/repo for an owner this file pins from or one of the two orgs.
+          AGREE_REPO = re.compile(r"github\.com/([A-Za-z0-9-]+)/(\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)|(?<![\w./-])([A-Za-z0-9-]+)/(\.?[A-Za-z0-9_-]+(?:\.[A-Za-z0-9_-]+)*)")
+          # A file name is not a repository (krateo-blueprints/index.yaml).
+          AGREE_FILE = re.compile(r"\.(ya?ml|md|json|txt|py|sh|tgz|git)$", re.I)
           tag_listings = {}
           disagreements, measurement_errors = [], []
 
@@ -512,7 +528,7 @@ jobs:
                       owners.append((len(text), n))
                   for m in re.finditer(r"(?:[^.!?]|[.!?](?!\s|$))+[.!?]?", text):
                       if m.group(0).strip():
-                          out.append((m.group(0), m.start(), owners))
+                          out.append((m.group(0), m.start(), owners, text))
               return out
 
 
@@ -546,6 +562,21 @@ jobs:
               return tag_listings[repo]
 
 
+          def repo_mentions(text, known):
+              # [(offset, "owner/repo")] for each explicit repository named in text.
+              out = []
+              for m in AGREE_REPO.finditer(text):
+                  url = m.group(1) is not None
+                  owner, name = (m.group(1), m.group(2)) if url else (m.group(3), m.group(4))
+                  if name.lower().endswith(".git"):
+                      name = name[:-4]
+                  if AGREE_FILE.search(name):
+                      continue
+                  if url or owner.lower() in known:
+                      out.append((m.start(), "%s/%s" % (owner, name)))
+              return out
+
+
           def pin_agrees(tok, pin):
               tok = tok[1:] if tok.startswith("v") else tok
               return tok == pin or (pin.count(".") < 2 and tok.startswith(pin + "."))
@@ -570,8 +601,9 @@ jobs:
                       if v != u and mm.group(3) != ref:
                           others |= pin_names(mm.group(3)) - mine
                   block = [(k + 1, lines[k]) for k in range(first, last + 1) if agree_comment(lines[k])]
+                  known = {"krateo-blueprints", "krateo-platformops"} | {mm.group(3).split("/")[0].lower() for mm in pins.values()}
                   seen = set()
-                  for sent, start, owners in comment_sentences(block):
+                  for sent, start, owners, para in comment_sentences(block):
                       low = sent.lower()
                       # BEGIN other-pin (a sentence about another pin of this file is that pin's)
                       if others and any(o in low for o in others) and not any(x in low for x in mine):
@@ -584,7 +616,7 @@ jobs:
                       # BEGIN quote-mention (a phrase in "..." or `...` is mentioned, not used: nova-kog #201 quotes its old defect)
                       unquoted = AGREE_QUOTED.sub(lambda q: " " * len(q.group(0)), sent)
                       # END quote-mention
-                      regions = [(0, len(sent))]
+                      regions = [(0, len(sent), False)]
                       # BEGIN phrase-required (only a sentence that refers to the pin is read; history and fixtures are not)
                       regions = []
                       for pm in AGREE_PHRASE.finditer(unquoted):
@@ -594,14 +626,49 @@ jobs:
                               if AGREE_PAST.match(unquoted, pm.end()):
                                   continue
                               # END deictic-history
-                              regions.append((0, len(sent)))
+                              regions.append((0, len(sent), True))
                           else:
                               lo = max([0] + [c.end() for c in AGREE_CLAUSE.finditer(unquoted, 0, pm.start())])
                               nxt = AGREE_CLAUSE.search(unquoted, pm.end())
-                              regions.append((lo, nxt.start() if nxt else len(sent)))
+                              regions.append((lo, nxt.start() if nxt else len(sent), False))
                       # END phrase-required
-                      for lo, hi in regions:
+                      sent_mentions = repo_mentions(sent, known)
+                      para_mentions = repo_mentions(para, known)
+
+                      def referent(t):
+                          # The repository a version belongs to: the one named nearest it in its sentence, else the last
+                          # one named before it in its paragraph (a table under a heading that names it), else the
+                          # pinned one. Never the whole block: a block's opening line about another repository does
+                          # not own a later sentence.
+                          if sent_mentions:
+                              return min(sent_mentions, key=lambda m: min(abs(m[0] - t[0]), abs(m[0] - t[1])))[1]
+                          prior = [r for q, r in para_mentions if q < start + t[0]]
+                          return prior[-1] if prior else repo
+
+                      for lo, hi, deictic in regions:
                           inside = [t for t in toks if t[0] >= lo and t[1] <= hi]
+                          if not inside:
+                              continue
+                          ref_of = {t: repo for t in inside}
+                          # BEGIN referent (a version is attributed to the repository named before it: charts 1.0.0 is not
+                          # platformops 1.0.0, though the numbers match; found by the openstack-nova-operator-kog session)
+                          ref_of = {t: referent(t) for t in inside}
+                          for t in inside:
+                              if not deictic or ref_of[t].lower() == repo.lower():
+                                  continue
+                              other = tags_of(ref_of[t])
+                              if other is None or (t[2][1:] if t[2].startswith("v") else t[2]) not in other[0]:
+                                  continue
+                              n = line_at(start + t[0], owners)
+                              if (n, t[2], ref_of[t]) in seen:
+                                  continue
+                              seen.add((n, t[2], ref_of[t]))
+                              excerpt = sent.strip()
+                              disagreements.append("%s:%d: names %s of %s, but the pin at %s:%d is %s `# %s`, another repository (%s scope, lines %d-%d; %d distinct tags of %s listed, %d of them annotated): \"%s\"" % (
+                                  path, n, t[2], ref_of[t], path, u + 1, repo, pin_comment, kind, first + 1, last + 1, other[1], ref_of[t], other[2],
+                                  excerpt if len(excerpt) <= 240 else excerpt[:237] + "..."))
+                          # END referent
+                          inside = [t for t in inside if ref_of[t].lower() == repo.lower()]
                           if not inside:
                               continue
                           listing = tags_of(repo)

@@ -317,11 +317,20 @@ No release reported any of this.
        - **Only versions of the pinned thing.** A version counts when it is a tag of the pinned
          repository, listed with `git ls-remote --tags`. The repository's own chart version is not one.
          A failed or empty listing fails the check as a measurement error (exit 2).
+       - **A version belongs to the repository named with it.** Numbers coincide across repositories:
+         charts and krateo-platformops/.github both have a `1.0.0`. A version is attributed to the repository
+         named explicitly nearest it in its sentence, else last before it in its paragraph, else the pinned
+         one. Explicitly means a `github.com/owner/repo` URL, or `owner/repo` for one of the two orgs or an
+         owner the file pins from, not a file name. So a charts table ending "1.0.3 <- pinned here" over a
+         krateo-platformops/.github `# 1.0.3` pin disagrees by referent, and so does charts 1.0.0 over its
+         `# 1.0.0` (the openstack-nova-operator-kog session). A bare word such as "charts" is not read as a
+         repository, because it is a common noun as often as a name.
        - **History is fine when it names the pin.** `1.0.1 lost a race, 1.0.3 <- pinned here` over
          `# 1.0.3` agrees. Over `# 1.4.3` it does not: move the marker with the pin.
        - **Not read:** inline (end-of-line) comments, pins whose comment holds no version (`# main
          YYYY-MM-DD`, a recorded float), and `action.yml` files. Another product's version that equals a
-         tag of the pinned repository is compared as though it were the pin's; reword it if it is flagged.
+         tag of the pinned repository is compared as though it were the pin's unless its repository is named
+         explicitly; reword it if it is flagged. A repository named only by a bare word is not attributed.
 
      - **Exclusion is not grouping.** The defect is charts pins excluded from a group **and** in no
        group of their own. An exclusion paired with a dedicated charts group is the fixed state.

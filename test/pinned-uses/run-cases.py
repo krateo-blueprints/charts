@@ -374,6 +374,35 @@ jobs:
   publish:
     uses: %s@%s # 1.4.2
 """ % (PUB, P)
+CHART_PUSH = "krateo-platformops/.github/.github/actions/chart-push"
+
+
+def referent_case(comment_lines, version):
+    # One step pinning the shared chart-push action (krateo-platformops/.github, whose only tag is 1.0.0), with the
+    # given comment block above it.
+    body = "".join("      # %s\n" % l if l else "      #\n" for l in comment_lines)
+    return "on: push\njobs:\n  release:\n    runs-on: ubuntu-latest\n    steps:\n%s      - uses: %s@%s # %s\n" % (body, CHART_PUSH, P, version)
+
+
+CHARTS_TABLE = ["The publisher's history, from krateo-blueprints/charts:", "  1.0.2  retries that race",
+                "  1.0.3  case-insensitive repository names   <- pinned here"]
+CASES += [
+    # The numbers belong to the repository named before them (openstack-nova-operator-kog's table of charts versions).
+    ("charts table over a platformops pin", {"a.yaml": referent_case(CHARTS_TABLE, "1.0.3")}, False,
+     "a.yaml:8: names 1.0.3 of krateo-blueprints/charts, but the pin at .github/workflows/a.yaml:9 is krateo-platformops/.github `# 1.0.3`, another repository", "referent"),
+    # The same number in both repositories: platformops 1.0.0 exists, but the comment names charts 1.0.0.
+    ("charts 1.0.0 over a platformops 1.0.0", {"a.yaml": referent_case(["Verified here against krateo-blueprints/charts: its tag 1.0.0 peels to this commit."], "1.0.0")}, False,
+     "names 1.0.0 of krateo-blueprints/charts, but the pin at .github/workflows/a.yaml:7 is krateo-platformops/.github `# 1.0.0`, another repository", "referent"),
+    ("platformops history over a platformops pin", {"a.yaml": referent_case(["Resolved from https://github.com/krateo-platformops/.github:", "1.0.0 <- pinned here"], "1.0.0")}, True,
+     AGREE_OK, None),
+    # ironic's chart-push block opens with "krateo-blueprints/charts PUBLISHING.md rule 14", but its `# 1.0.0` sentence
+    # names krateo-platformops/.github: the block's first line does not own a later sentence.
+    ("a block's opening repository", {"a.yaml": referent_case(["krateo-blueprints/charts PUBLISHING.md rule 14: charts go through this action.", "",
+                                                                "`# 1.0.0` since 2026-11-18: this pin follows krateo-platformops/.github's tags."], "1.0.0")}, True,
+     AGREE_OK, None),
+    ("a file path is not a repository", {"a.yaml": referent_case(["krateo-blueprints/index.yaml lists 1.0.0; this pin is 1.0.0 of the action."], "1.0.0")}, True,
+     AGREE_OK, None),
+]
 CASES += [
     ("aruba before #99 (control)", fixture("aruba-dad81ec"), False,
      ".github/workflows/release-tag.yaml:257: names 1.0.2 of krateo-blueprints/charts, but the pin at .github/workflows/release-tag.yaml:290 is `# 1.4.2` (job scope, lines 250-296; 15 distinct tags of krateo-blueprints/charts listed, 12 of them annotated)",
@@ -518,7 +547,7 @@ def main():
               "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch",
               "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable",
               "script-scan", "shebang-select", "agreement-check", "step-scope", "other-pin", "quote-mention",
-              "phrase-required", "deictic-history", "tag-filter", "listing-control")
+              "phrase-required", "deictic-history", "tag-filter", "listing-control", "referent")
     for block in blocks:
         mutant = without(script, block)
         for case in CASES:
