@@ -289,6 +289,11 @@ No release reported any of this.
            uses: krateo-blueprints/charts/.github/workflows/publish-chart.yaml@<sha> # X.Y.Z
        ```
 
+       That command prints nothing in three cases: the tag is gone, the repository is the wrong one,
+       or the network failed. The openstack-nova-operator-kog session first asked
+       krateo-platformops/.github for charts tags. So run the control first: `git ls-remote --tags
+       <repo> | wc -l` must be greater than 0 before an empty answer is read as "no such tag".
+
      - **Exclusion is not grouping.** The defect is charts pins excluded from a group **and** in no
        group of their own. An exclusion paired with a dedicated charts group is the fixed state.
        Excluding `krateo-blueprints/charts*` from a Dependabot group,
