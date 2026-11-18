@@ -228,8 +228,39 @@ CASES += [
      "0 bare chart push(es)", None),
     ("helm-push as part of a word", {"a.yaml": run_block("helm cm-push dist/demo.tgz museum", "echo myhelm push-it", "echo helm pushes")}, True,
      "0 bare chart push(es)", None),
+    # Locate mode, as release-oci.yaml and multi-chart loops use it: the pinned action outputs push.sh's path, a loop runs it.
+    ("locate mode, then bash \"$path\"", {"a.yaml": steps("- name: Locate the shared chart push", "  id: chart-push", "  uses: %s@%s # main 2026-11-18" % (ACT, SHA),
+                                                         "- name: Push every chart", "  env:", "    CHART_PUSH: ${{ steps.chart-push.outputs.path }}", "  run: |",
+                                                         "    for tgz in dist/*.tgz; do", '      bash "${CHART_PUSH}" "$tgz" oci://ghcr.io/krateo-blueprints/charts', "    done")}, True,
+     "1 shared-action uses, 0 bare chart push(es)", None),
     ("push through the action", {"a.yaml": steps("- name: Push the chart", "  id: push", "  uses: %s@%s # main 2026-11-18" % (ACT, SHA), "  with:", "    chart: dist/demo-0.1.0.tgz", "    repository: oci://ghcr.io/krateo-blueprints/charts")}, True,
      "1 shared-action uses, 0 bare chart push(es)", None),
+]
+
+# PUBLISHING.md rule 9 inside shared reusables: a reusable (on: workflow_call) in this repository calling a sibling.
+SIB = "krateo-blueprints/charts/.github/workflows/release-preflight.yaml"
+
+
+def reusable(*job_lines):
+    return "on:\n  workflow_call:\njobs:\n  x:\n" + "".join("    %s\n" % l for l in job_lines)
+
+
+CASES += [
+    ("reusable calls a sibling @main", {"publish-chart.yaml": reusable("uses: %s@main # 1.3.0" % SIB)}, False,
+     "publish-chart.yaml:5: %s@main is pinned to 'main', not a 40-hex commit SHA" % SIB, "sha-check"),
+    ("reusable floats a sibling", {"publish-chart.yaml": reusable("uses: %s@main # floating: 2026-11-18 follow main" % SIB)}, False,
+     "floats inside a reusable workflow (on: workflow_call)", "float-reusable"),
+    ("reusable floats, reason above", {"publish-chart.yaml": "on:\n  workflow_call:\njobs:\n  x:\n    # follow the sibling\n    uses: %s@main # floating: 2026-11-18\n" % SIB}, False,
+     "floats inside a reusable workflow", "float-reusable"),
+    ("reusable pins a sibling", {"publish-chart.yaml": reusable("uses: %s@%s # 1.3.0" % (SIB, SHA))}, True,
+     "1 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 floating", None),
+    ("reusable with chart-push @main", {"publish-chart.yaml": "on:\n  workflow_call:\njobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s@main\n" % ACT}, False,
+     "the shared chart-push action is always pinned by commit", None),
+    # The same float outside a reusable is still a recorded float (nova-kog's callers): only reusables lose the exemption.
+    ("caller floats a sibling", {"lint.yaml": "on: push\njobs:\n  x:\n    uses: %s@main # floating: 2026-11-18 follow main\n" % SIB}, True,
+     "1 floating", None),
+    ("workflow_call only in a comment", {"lint.yaml": "on: push\n# not on: workflow_call:\njobs:\n  x:\n    uses: %s@main # floating: 2026-11-18 follow main\n" % SIB}, True,
+     "1 floating", None),
 ]
 
 NAIVE_BODY = """owner = target.split("/", 1)[0].lower()
@@ -299,7 +330,7 @@ def main():
             print("      output: " + out.strip().replace("\n", "\n              "))
     blocks = ("sha-check", "comment-check", "float-form", "inherit-check", "float-accept",
               "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch",
-              "action-scope", "action-sha", "action-comment", "bare-push", "push-comment")
+              "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable")
     for block in blocks:
         mutant = without(script, block)
         for case in CASES:

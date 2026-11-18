@@ -19,6 +19,9 @@ name: pinned-uses
 #     date of the main commit pinned. Without the comment nobody can tell what is pinned or
 #     whether it is stale. The dated form is transitional: krateo-platformops/.github will tag its
 #     workflows (charts#23), and callers then move to `# X.Y.Z`.
+# Inside a shared reusable (a file with `on: workflow_call`) the same holds for what it calls, and a float is refused
+# there: a caller that pins the reusable freezes only the reusable's own text, so a `@main` inside it would still move
+# under every pinned caller (found by the github-provider-kog and azuredevops-provider-kog sessions, 2026-11-18).
 # The one exception is a deliberate float, recorded at the line where it happens:
 #     uses: owner/repo/.github/workflows/x.yaml@main # floating: YYYY-MM-DD <reason>
 # It is a first-class form of the comment check, beside `# X.Y.Z` and `# main YYYY-MM-DD`, and is
@@ -178,6 +181,9 @@ jobs:
           bad, inherits, floats, pushes, checked, actions = [], [], [], [], 0, 0
           for path in files:
               lines = open(path, encoding="utf-8").read().split("\n")
+              # A reusable workflow (on: workflow_call): a caller that pins it freezes only its text, so what it calls
+              # must be pinned too (PUBLISHING.md rule 9, inside shared reusables).
+              reusable = any(re.match(r"^\s*workflow_call\s*:", l) for l in lines)
               for n, line in enumerate(lines, 1):
                   # BEGIN bare-push (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if (PUSH.search(line)
@@ -264,6 +270,11 @@ jobs:
                           bad.append("%s floats %r, which reads as a tag or an abbreviated SHA, not a branch; only a branch ref can be a recorded float" % (where, ref))
                           continue
                       # END float-branch
+                      # BEGIN float-reusable
+                      if reusable:
+                          bad.append("%s floats inside a reusable workflow (on: workflow_call); a caller that pins this file would still run whatever %s's branch holds, so pin it by commit (PUBLISHING.md rule 9, inside shared reusables)" % (where, ref))
+                          continue
+                      # END float-reusable
                       floats.append((where, date, reason))
                       continue
                   # END float-accept

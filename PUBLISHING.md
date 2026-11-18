@@ -226,6 +226,18 @@ No release reported any of this.
      (`owner/repo@ref`, such as `actions/checkout`) are out of this rule's scope (#20, decided
      2026-11-18), except the shared chart-push action, which rule 14 pins the same way and
      `pinned-uses.yaml` checks.
+   - **Inside shared reusables too.** A caller that pins a reusable by SHA freezes only that file's
+     text. A reusable that calls another workflow or action at `@main` still changes under every
+     pinned caller with no commit in any of them. The github-provider-kog and azuredevops-provider-kog
+     sessions found this independently on 2026-11-18, in krateo-platformops/.github's
+     `release-oci.yaml`. So a reusable pins everything it calls by commit, transitively:
+     - **Order:** leaves first, then their callers. A pinned commit must contain what it pins.
+     - **Bumped together:** internal calls are pinned inside the file and bumped together (Diego).
+     - **No float:** a reusable never floats, so `pinned-uses.yaml` refuses a recorded float in any
+       file with `on: workflow_call`.
+     - **Enforcement:** this repository's reusables are checked by its own `this-repository` job.
+       krateo-platformops/.github checks its internal calls with its own `test-internal-pins.yaml`
+       (krateo-platformops/.github#60).
    - **Secrets cross organisations by name, never by `inherit`.** `secrets: inherit` passes nothing
      to a reusable workflow owned by another organisation, and nothing reports it: the called
      workflow reads each secret as empty. krateo-platformops/.github's `release-notes.yaml` then
@@ -321,7 +333,7 @@ No release reported any of this.
     So there is one implementation (Diego, 2026-11-18): krateo-platformops/.github's `chart-push`
     action, the one `release-oci.yaml` already pushes through.
     - **The action:** a workflow pushes each packaged chart with
-      `krateo-platformops/.github/.github/actions/chart-push` in push mode. It is pinned like a reusable
+      `krateo-platformops/.github/.github/actions/chart-push`, in push mode or locate mode. It is pinned like a reusable
       workflow (rule 9), by full commit SHA. krateo-platformops/.github publishes no tags yet, so the
       comment is the transitional `# main YYYY-MM-DD`, moving to `# X.Y.Z` when it tags (#23). It is
       never floated, because it receives the caller's registry write credentials:
@@ -329,7 +341,7 @@ No release reported any of this.
       ```yaml
           - name: Push the chart
             id: push
-            uses: krateo-platformops/.github/.github/actions/chart-push@<40-hex sha> # main YYYY-MM-DD
+            uses: krateo-platformops/.github/.github/actions/chart-push@fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4 # main 2026-11-18
             with:
               chart: dist/<name>-<version>.tgz
               repository: oci://ghcr.io/krateo-blueprints/charts
@@ -340,8 +352,29 @@ No release reported any of this.
       Credentials are inputs passed by name, never through `secrets: inherit`, which carries nothing
       across organisations (rule 9). The action refuses an empty input before anything is sent, logs
       in with the token on stdin, and outputs the pushed manifest digest as `digest`. The caller
-      sets up helm and grants `packages: write`. With no inputs, the action only outputs the path
-      of its `push.sh`. That is how `release-oci.yaml` pushes each chart.
+      sets up helm and grants `packages: write`.
+
+      **Locate mode** is for a loop over several charts in one step. With no inputs, the action only
+      outputs the path of its `push.sh`, and the loop runs that script once per chart. Push mode and
+      locate mode run the same `push.sh`. `release-oci.yaml` pushes each chart this way:
+
+      ```yaml
+          - name: Locate the shared chart push
+            id: chart-push
+            uses: krateo-platformops/.github/.github/actions/chart-push@fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4 # main 2026-11-18
+          - name: Push every chart
+            env:
+              CHART_PUSH: ${{ steps.chart-push.outputs.path }}
+              REGISTRY_USERNAME: ${{ github.actor }}       # push.sh's read-back, after helm registry login
+              REGISTRY_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
+            run: |
+              for tgz in dist/*.tgz; do
+                bash "${CHART_PUSH}" "$tgz" oci://ghcr.io/krateo-blueprints/charts
+              done
+      ```
+
+      `fb91b76eb585cdd2f148abfbfb6d14e05bcbacb4` is the merge of krateo-platformops/.github#59, the
+      digest-safe retry, committed on that repository's main on 2026-11-18.
     - **What it retries:** that exact error and nothing else. It waits, polling up to 10 times 3 s
       apart, until the registry serves bytes that hash to the digest, then pushes the same untouched
       archive again. helm takes the manifest's created time from the archive's modification time
@@ -351,8 +384,8 @@ No release reported any of this.
       and its tests (the 7 cases and 6 mutants it was written with) live in
       krateo-platformops/.github, not here.
     - **Shared reusables too:** a reusable workflow that pushes charts for its callers pushes through
-      the same action, pinned the same way. `release-oci.yaml` calls it `@main` today. Moving that call
-      to a SHA pin is part of rule 9's krateo-platformops/.github item.
+      the same action, pinned the same way. `release-oci.yaml`'s pin is krateo-platformops/.github#60,
+      together with every other internal call there (rule 9, inside shared reusables).
     - **No bare push:** a `helm push` or `oras push` in any workflow is refused. `pinned-uses.yaml`
       checks this beside rule 9, so every repository that already runs it from its lint is checked
       with no new job. It refuses every uncommented line that runs either command; a line that is a
