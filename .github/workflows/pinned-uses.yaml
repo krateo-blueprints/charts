@@ -15,10 +15,11 @@ name: pinned-uses
 #   - a ref of exactly 40 lowercase hex characters, a commit. A tag or branch can move. An abbreviated
 #     SHA is refused by GitHub for reusable workflows anyway.
 #   - a trailing comment naming what that commit is: `# X.Y.Z` (the tag it carries), or, for a
-#     repository that publishes no tags yet (krateo-platformops/.github), `# main YYYY-MM-DD`, the
-#     date of the main commit pinned. Without the comment nobody can tell what is pinned or
-#     whether it is stale. The dated form is transitional: krateo-platformops/.github will tag its
-#     workflows (charts#23), and callers then move to `# X.Y.Z`.
+#     repository that publishes no tags yet, `# main YYYY-MM-DD`, the date of the main commit
+#     pinned. Without the comment nobody can tell what is pinned or whether it is stale. The dated
+#     form is transitional: krateo-platformops/.github tagged 1.0.0 on 2026-11-18 (charts#23), so a
+#     dated pin into it still passes but is printed as a notice and counted in the summary, to be
+#     moved to `# X.Y.Z`.
 # Inside a shared reusable (a file with `on: workflow_call`) the same holds for what it calls, and a float is refused
 # there: a caller that pins the reusable freezes only the reusable's own text, so a `@main` inside it would still move
 # under every pinned caller (found by the github-provider-kog and azuredevops-provider-kog sessions, 2026-11-18).
@@ -50,15 +51,16 @@ name: pinned-uses
 # Rule 14, checked here because every caller already runs this job:
 #   - the shared chart-push action (`krateo-platformops/.github/.github/actions/chart-push@<ref>`,
 #     owner and repository in any case) is pinned like a reusable workflow: a 40-hex commit with
-#     `# X.Y.Z` or, while krateo-platformops/.github publishes no tags, `# main YYYY-MM-DD` (charts#23).
+#     `# X.Y.Z` (krateo-platformops/.github is tagged since 1.0.0) or the transitional dated form.
 #     It is never floated: it receives the caller's registry write credentials.
 #   - no workflow pushes a chart bare. Every uncommented line with `helm push` or `oras push` (as a
 #     word, after the start of the line, whitespace, `;`, `&`, `|`, `(`, a backtick or a quote) is
 #     refused: charts are pushed through that action, which survives GHCR's tag read-after-write
 #     race (sha256:<digest>: not found after an accepted PUT).
 #     A line whose first non-blank character is `#`, a YAML or shell comment, is not a push. The check
-#     is textual and reads the workflow files only: a push inside a script the workflow runs, or
-#     through a variable (`$HELM push`), is not seen. It cannot tell an `oras push` of a chart from
+#     is textual and reads the workflow files and every *.sh in the checkout (1.4.1: a script the
+#     workflow runs pushed bare and passed 1.4.0); a Makefile or a .py, or a push through a variable
+#     (`$HELM push`), is not seen. The summary counts the scripts scanned. It cannot tell an `oras push` of a chart from
 #     one of another artifact, so it refuses both; a non-chart `oras push` is decided in
 #     PUBLISHING.md first.
 #
@@ -179,6 +181,22 @@ jobs:
           SHORT_SHA = re.compile(r"^[0-9a-f]{7,39}$")
           PUBLISHER = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
           bad, inherits, floats, pushes, checked, actions = [], [], [], [], 0, 0
+          dated_tagged = []
+          # Owners that publish tags now: a `# main YYYY-MM-DD` pin into them is still accepted (transitional) but gets a
+          # notice to move to `# X.Y.Z` at the same commit. krateo-platformops/.github tagged 1.0.0 on 2026-11-18 (charts#23).
+          TAGGED_OWNERS = ("krateo-platformops/.github/",)
+
+
+          def bare_push(line):
+              # A `helm push` / `oras push` run by this line, or None (PUBLISHING.md rule 14).
+              m = PUSH.search(line)
+              # BEGIN push-comment (a YAML or shell comment line is not a push)
+              if line.lstrip().startswith("#"):
+                  return None
+              # END push-comment
+              return m
+
+
           for path in files:
               lines = open(path, encoding="utf-8").read().split("\n")
               # A reusable workflow (on: workflow_call): a caller that pins it freezes only its text, so what it calls
@@ -186,12 +204,9 @@ jobs:
               reusable = any(re.match(r"^\s*workflow_call\s*:", l) for l in lines)
               for n, line in enumerate(lines, 1):
                   # BEGIN bare-push (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
-                  if (PUSH.search(line)
-                          # BEGIN push-comment (a YAML or shell comment line is not a push)
-                          and not line.lstrip().startswith("#")
-                          # END push-comment
-                          ):
-                      pushes.append("%s:%d: a bare `%s push`; push charts through %s@<40-hex sha> # main YYYY-MM-DD, which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, PUSH.search(line).group(2), CHART_PUSH_ACTION))
+                  bp = bare_push(line)
+                  if bp:
+                      pushes.append("%s:%d: a bare `%s push`; push charts through %s@<40-hex sha> # X.Y.Z, which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, bp.group(2), CHART_PUSH_ACTION))
                   # END bare-push
                   m = USES.match(line)
                   if not m:
@@ -214,8 +229,10 @@ jobs:
                       # END action-sha
                       # BEGIN action-comment
                       if not COMMENT.match(comment):
-                          bad.append("%s has comment %r; the shared chart-push action needs `# X.Y.Z`, or `# main YYYY-MM-DD` while krateo-platformops/.github is untagged, and is never floated (PUBLISHING.md rule 14)" % (where, comment))
+                          bad.append("%s has comment %r; the shared chart-push action needs `# X.Y.Z` (krateo-platformops/.github is tagged since 1.0.0), or the transitional `# main YYYY-MM-DD`, and is never floated (PUBLISHING.md rule 14)" % (where, comment))
                       # END action-comment
+                      if comment.startswith("main ") and target.lower().startswith(TAGGED_OWNERS):
+                          dated_tagged.append(where)
                       continue
                   checked += 1
                   owner = target.split("/", 1)[0].lower()
@@ -278,14 +295,37 @@ jobs:
                       floats.append((where, date, reason))
                       continue
                   # END float-accept
+                  if comment.startswith("main ") and target.lower().startswith(TAGGED_OWNERS):
+                      dated_tagged.append(where)
                   # BEGIN sha-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if not SHA.match(ref):
                       bad.append("%s is pinned to %r, not a 40-hex commit SHA (a deliberate float of a branch says `# floating: YYYY-MM-DD <reason>`)" % (where, ref))
                   # END sha-check
+          # Rule 14 in scripts too: a bare push inside a script a workflow runs is the same push. Every *.sh in the
+          # checkout is read, comment lines skipped (krateo-openstack-blueprint's hack/publish-charts.sh, 2026-11-18,
+          # passed 1.4.0 by being outside .github/workflows).
+          scripts = []
+          for d, ds, fs in os.walk("."):
+              ds[:] = sorted(x for x in ds if x not in (".git", "node_modules"))
+              scripts += [os.path.normpath(os.path.join(d, f)) for f in fs if f.endswith(".sh")]
+          scripts.sort()
+          # BEGIN script-scan (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
+          for path in scripts:
+              try:
+                  text = open(path, encoding="utf-8").read()
+              except (UnicodeDecodeError, OSError):
+                  continue
+              for n, line in enumerate(text.split("\n"), 1):
+                  bp = bare_push(line)
+                  if bp:
+                      pushes.append("%s:%d: a bare `%s push` in a script; run it through %s (locate mode: `bash \"${CHART_PUSH}\" <tgz> <oci repo>` with CHART_PUSH from the action's path output), which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, bp.group(2), CHART_PUSH_ACTION))
+          # END script-scan
+          for where in dated_tagged:
+              print("::notice title=dated pin into a tagged repository::%s is pinned with `# main YYYY-MM-DD`; krateo-platformops/.github publishes tags since 1.0.0 (charts#23), so pin `# X.Y.Z` (the same commit if it carries a tag) and let Dependabot advance it" % where)
           for where, date, reason in floats:
               print("::notice title=floating reusable workflow::%s floats since %s, reason: %s" % (where, date, reason))
           for b in bad + inherits + pushes:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit, %d shared-action uses, %d bare chart push(es) (PUBLISHING.md rule 14)" % (len(files), checked, len(bad), len(floats), len(inherits), actions, len(pushes)))
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit, %d shared-action uses, %d bare chart push(es) (PUBLISHING.md rule 14), %d script(s) scanned, %d dated pin(s) into a tagged repository" % (len(files), checked, len(bad), len(floats), len(inherits), actions, len(pushes), len(scripts), len(dated_tagged)))
           sys.exit(1 if bad or inherits or pushes else 0)
           PY

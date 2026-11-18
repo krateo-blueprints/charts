@@ -175,10 +175,17 @@ No release reported any of this.
    commit in the caller, so a green run can't be reproduced. A SHA can't move. On 2026-11-18, 136
    reusable `uses:` in 51 repositories were movable, the publisher itself `@main` in 12 (#20).
    - **The comment:** `# X.Y.Z`, the tag that commit carries. A repository that publishes no tags yet
-     (krateo-platformops/.github, as of 2026-11-18) is pinned to a commit on its `main` with the comment
-     `# main YYYY-MM-DD`, the date of that commit, until it tags its workflows. Then callers move to
-     `# X.Y.Z`. The dated form is **transitional**: krateo-platformops/.github will start tagging
-     (#23), and the dated pins are then replaced, not kept as a second way to pin.
+     is pinned to a commit on its `main` with the comment `# main YYYY-MM-DD`, the date of that
+     commit, until it tags its workflows. Then callers move to `# X.Y.Z`. The dated form is
+     **transitional**: the dated pins are replaced, not kept as a second way to pin.
+     krateo-platformops/.github published its first tag, `1.0.0`, on 2026-11-18. The annotated tag
+     object is `0b109bb3f15f1f80d97c0aa1f1dcae6eb070fbeb`, and it peels to
+     `e1d3e99215e80ae56eca4a67e9e061b2c73168b8`, the merge of its #64 (#23). So:
+     - a `# main YYYY-MM-DD` pin into it moves to `# X.Y.Z`. At `e1d3e99` the change is the comment
+       alone;
+     - Dependabot advances the pin from there;
+     - `pinned-uses.yaml` still accepts the dated form, but prints a notice for every dated pin into
+       a tagged repository and counts them in its summary.
    - **A deliberate float is recorded at the line, dated, with its reason.** A repository may choose
      to follow an org-owned reusable workflow's branch instead of a commit. It says so where it
      happens, either inline:
@@ -334,14 +341,15 @@ No release reported any of this.
     action, the one `release-oci.yaml` already pushes through.
     - **The action:** a workflow pushes each packaged chart with
       `krateo-platformops/.github/.github/actions/chart-push`, in push mode or locate mode. It is pinned like a reusable
-      workflow (rule 9), by full commit SHA. krateo-platformops/.github publishes no tags yet, so the
-      comment is the transitional `# main YYYY-MM-DD`, moving to `# X.Y.Z` when it tags (#23). It is
-      never floated, because it receives the caller's registry write credentials:
+      workflow (rule 9), by full commit SHA with the tag in a comment, `# X.Y.Z`.
+      krateo-platformops/.github is tagged since `1.0.0` (#23), so Dependabot advances the pin, and
+      the transitional `# main YYYY-MM-DD` is no longer needed. It is never floated, because it
+      receives the caller's registry write credentials:
 
       ```yaml
           - name: Push the chart
             id: push
-            uses: krateo-platformops/.github/.github/actions/chart-push@653ac1e67d761584993a774c76963514968b3650 # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@e1d3e99215e80ae56eca4a67e9e061b2c73168b8 # 1.0.0
             with:
               chart: dist/<name>-<version>.tgz
               repository: oci://ghcr.io/krateo-blueprints/charts
@@ -361,7 +369,7 @@ No release reported any of this.
       ```yaml
           - name: Locate the shared chart push
             id: chart-push
-            uses: krateo-platformops/.github/.github/actions/chart-push@653ac1e67d761584993a774c76963514968b3650 # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@e1d3e99215e80ae56eca4a67e9e061b2c73168b8 # 1.0.0
           - name: Push every chart
             env:
               CHART_PUSH: ${{ steps.chart-push.outputs.path }}
@@ -373,10 +381,13 @@ No release reported any of this.
               done
       ```
 
-      `653ac1e67d761584993a774c76963514968b3650` is the merge of krateo-platformops/.github#63 on that
-      repository's main, committed 2026-11-18. #59 brought the digest-safe retry, #61 took the last
-      `| head -n1` reads out of it, and #63 moved the read-back's credentials and Bearer token off
-      curl's command line onto its stdin. At that commit `push.sh` has sha256
+      `e1d3e99215e80ae56eca4a67e9e061b2c73168b8` is tag `1.0.0` of krateo-platformops/.github,
+      the merge of its #64, committed 2026-11-18. Its chart-push is the one #63 left:
+      - #59 brought the digest-safe retry;
+      - #61 took the last `| head -n1` reads out of it;
+      - #63 moved the read-back's credentials and Bearer token off curl's command line onto its stdin.
+
+      A pin at `653ac1e`, #63's merge, runs the same files. At `1.0.0`, `push.sh` has sha256
       `e291264346502fac37f1df85d7c48d8794193b489c5d3ef84c7c7f583f317b03` and `action.yml`
       `3ee0aca665b798c37da7179cd23a2b2d84f7da3990eac1a538d46e75b01bffce`. The example names a commit
       so it can be copied as is; pin the newest commit that changed the action.
@@ -396,8 +407,16 @@ No release reported any of this.
       with no new job. It refuses every uncommented line that runs either command; a line that is a
       YAML or shell comment is not a push. The check is textual:
       - It refuses prose that names a command, such as a step name or an `echo` message. Reword it.
-      - It reads workflow files only, so a push inside a script a workflow runs, or through a
-        variable, isn't seen. Such scripts are replaced by the action, not hidden from the check.
+      - **Scripts are read too.** It reads every workflow file, and also every `*.sh` anywhere in the
+        checkout, so a push inside a script a workflow runs is refused like one in a `run:` block.
+        krateo-openstack-blueprint's `hack/publish-charts.sh` passed 1.4.0 that way, until 1.4.1
+        closed the gap.
+        - In a script, use locate mode: `bash "${CHART_PUSH}" <tgz> <oci repo>`, with CHART_PUSH
+          exported from the action's `path` output.
+        - Other files are not read: a Makefile, a Python script that runs it, or a push through a
+          variable (`$HELM push`). Such pushes are replaced by the action, not hidden from the check.
+        - The summary line counts the scripts scanned, so "0 script(s)" shows when there was
+          nothing to read.
       - It can't tell an `oras push` of a chart from one of another artifact, so a non-chart
         `oras push` is decided here first.
 

@@ -9,7 +9,8 @@ Then the mutations. The script carries marked blocks: `sha-check`, `comment-chec
 `float-form` (the float as a first-class comment form), `inherit-check`, `float-accept` (which accepts a
 recorded float) and, inside it, the refusals `float-date`, `float-reason`, `float-owner`, `float-publisher`,
 `float-sha` and `float-branch`; and for rule 14, `action-scope` (the shared chart-push action is checked),
-`action-sha`, `action-comment`, `bare-push` and `push-comment` (a commented line is not a push). Each is deleted in turn, and the cases that block exists for must flip to the
+`action-sha`, `action-comment`, `bare-push` and `push-comment` (a commented line is not a push), `float-reusable`, and
+`script-scan` (a bare push in any *.sh in the checkout, 1.4.1). Each is deleted in turn, and the cases that block exists for must flip to the
 opposite verdict: a refused case to passing, an accepted float to refused. Where a case names the reason the
 mutant must be caught for (`mutant_text`), the mutant's output must say it. A case whose verdict a mutant
 leaves unchanged is decided by something else, so it would prove nothing about that block, and this fails.
@@ -263,6 +264,28 @@ CASES += [
      "1 floating", None),
 ]
 
+# PUBLISHING.md rule 14 in scripts: a bare push in a *.sh anywhere in the checkout is refused like one in a workflow.
+SCRIPT_PUSH = '#!/usr/bin/env bash\nset -euo pipefail\nfor t in dist/*.tgz; do\n  helm push "$t" oci://ghcr.io/krateo-blueprints/charts\ndone\n'
+CASES += [
+    ("script push (hack/publish-charts.sh)", {"a.yaml": steps(ACT_USE), "hack/publish-charts.sh": SCRIPT_PUSH}, False,
+     "hack/publish-charts.sh:4: a bare `helm push` in a script", "script-scan"),
+    ("script push, deep in the tree", {"a.yaml": steps(ACT_USE), "charts/tools/bin/release.sh": "oras push ghcr.io/x/y:1 a.tgz\n"}, False,
+     "charts/tools/bin/release.sh:1: a bare `oras push` in a script", "script-scan"),
+    ("script push inside a retry loop", {"a.yaml": steps(ACT_USE), "hack/push.sh": 'for i in 1 2 3; do\n  if helm push "$1" "$2"; then break; fi\ndone\n'}, False,
+     "1 bare chart push(es) (PUBLISHING.md rule 14), 1 script(s) scanned", "script-scan"),
+    ("script, commented push", {"a.yaml": steps(ACT_USE), "hack/publish-charts.sh": "# was: helm push \"$t\" oci://r/p\necho ok\n"}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 1 script(s) scanned", "push-comment"),
+    ("script through the action's push.sh", {"a.yaml": steps(ACT_USE), "hack/publish-charts.sh": 'bash "${CHART_PUSH}" "$t" oci://r/p\n'}, True,
+     "0 bare chart push(es) (PUBLISHING.md rule 14), 1 script(s) scanned", None),
+    ("no scripts at all", {"a.yaml": steps(ACT_USE)}, True, "0 bare chart push(es) (PUBLISHING.md rule 14), 0 script(s) scanned", None),
+    # Out of scope by design: only *.sh files are read, beside the workflows.
+    ("a .py naming the command", {"a.yaml": steps(ACT_USE), "hack/gate.py": 'assert "helm push" not in text\n'}, True, "0 script(s) scanned", None),
+    # krateo-platformops/.github is tagged (1.0.0): a dated pin into it still passes, with a notice.
+    ("dated pin into a tagged repo", {"a.yaml": steps(ACT_USE)}, True, "1 dated pin(s) into a tagged repository", None),
+    ("tagged pin, no notice", {"a.yaml": steps("- uses: %s@%s # 1.0.0" % (ACT, SHA))}, True, "0 dated pin(s) into a tagged repository", None,
+     {"absent": "dated pin into a tagged repository::"}),
+]
+
 NAIVE_BODY = """owner = target.split("/", 1)[0].lower()
 if owner != caller_owner and "secrets: inherit" in "\\n".join(lines):
     inherits.append("%s: naive text search found secrets: inherit" % where)"""
@@ -306,7 +329,10 @@ def run(script, files, caller=CALLER):
             wf = os.path.join(repo, ".github", "workflows")
             os.makedirs(wf)
             for name, text in files.items():
-                open(os.path.join(wf, name), "w").write(text)
+                # A name with a slash is a path from the repository root (a script); a bare name is a workflow.
+                p = os.path.join(repo, name) if "/" in name else os.path.join(wf, name)
+                os.makedirs(os.path.dirname(p), exist_ok=True)
+                open(p, "w").write(text)
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as f:
             f.write(script)
         env = dict(os.environ, WORKDIR=repo, CALLER=caller)
@@ -330,7 +356,8 @@ def main():
             print("      output: " + out.strip().replace("\n", "\n              "))
     blocks = ("sha-check", "comment-check", "float-form", "inherit-check", "float-accept",
               "float-date", "float-reason", "float-owner", "float-publisher", "float-sha", "float-branch",
-              "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable")
+              "action-scope", "action-sha", "action-comment", "bare-push", "push-comment", "float-reusable",
+              "script-scan")
     for block in blocks:
         mutant = without(script, block)
         for case in CASES:
