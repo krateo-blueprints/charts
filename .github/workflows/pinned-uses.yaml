@@ -1,7 +1,8 @@
 name: pinned-uses
 
 # Every reusable workflow a repository calls is pinned by full commit SHA with a version comment
-# (PUBLISHING.md rule 9). A caller adds this as a job of its lint, pinned the same way.
+# (PUBLISHING.md rule 9), and so is every shared action from this repository, and no chart is pushed
+# bare (rule 14). A caller adds this as a job of its lint, pinned the same way.
 #
 # A movable ref (`@main`, a tag such as `@1.1.0`) lets whoever moves it run code in every caller at
 # once, with whatever the caller passes or grants it. It also lets a caller's CI change behaviour
@@ -40,8 +41,24 @@ name: pinned-uses
 # (Decided by Diego for nova-kog, 2026-11-07, reaffirmed 2026-11-18: org-owned workflows may float
 # where a repository chooses to; the publisher may not.)
 # What is not checked: local workflows (`./...`), which move with the caller's own commit;
-# `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path). Rule 9 does
-# not cover actions (charts#20, decided 2026-11-18).
+# `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path), except the
+# shared actions this repository publishes (below). Rule 9 does not cover actions (charts#20, decided
+# 2026-11-18).
+#
+# Rule 14, checked here because every caller already runs this job:
+#   - a shared action from this repository (`krateo-blueprints/charts/.github/actions/<name>@<ref>`,
+#     owner and repository in any case) is pinned to a 40-hex commit with `# X.Y.Z`, the charts tag
+#     that commit carries. charts is tagged, so the dated form does not apply, and it is never floated:
+#     push-chart receives the caller's registry write credentials.
+#   - no workflow pushes a chart bare. Every uncommented line with `helm push` or `oras push` (as a
+#     word, after the start of the line, whitespace, `;`, `&`, `|`, `(`, a backtick or a quote) is
+#     refused: charts are pushed through krateo-blueprints/charts/.github/actions/push-chart, which
+#     survives GHCR's tag read-after-write race (sha256:<digest>: not found after an accepted PUT).
+#     A line whose first non-blank character is `#`, a YAML or shell comment, is not a push. The check
+#     is textual and reads the workflow files only: a push inside a script the workflow runs, or
+#     through a variable (`$HELM push`), is not seen. It cannot tell an `oras push` of a chart from
+#     one of another artifact, so it refuses both; a non-chart `oras push` is decided in
+#     PUBLISHING.md first.
 #
 # A repository with no workflow file at all fails: a check that read nothing has checked nothing.
 #
@@ -78,7 +95,7 @@ jobs:
           persist-credentials: false
 
       # The directory reaches the script through env, never interpolated into it.
-      - name: Every reusable workflow is pinned by commit SHA with a version comment, and gets no cross-org secrets inherit
+      - name: Every reusable workflow and shared action is pinned by commit SHA with a version comment, no cross-org secrets inherit, no bare chart push
         env:
           WORKDIR: ${{ inputs.working-directory }}
           CALLER: ${{ github.repository }}
@@ -103,6 +120,10 @@ jobs:
           USES = re.compile(r"""^\s*(?:-\s+)?uses:\s*(['"]?)([^'"\s#]+)\1\s*(?:#\s*(.*?))?\s*$""")
           # The key itself, never a comment that quotes it: a line whose first non-blank is `#` cannot match.
           INHERIT = re.compile(r"""^(\s*)secrets:\s*(['"]?)inherit\2\s*(?:#.*)?$""")
+          # A bare chart push (rule 14): `helm push` / `oras push` as a word, not part of another word.
+          PUSH = re.compile(r"""(^|[\s;&|(`'"])(helm|oras)\s+push\b""")
+          SHARED_ACTIONS = "krateo-blueprints/charts/.github/actions/"
+          VERSION = re.compile(r"^\d+\.\d+\.\d+$")
 
 
           def indent(line):
@@ -156,19 +177,43 @@ jobs:
           TAGLIKE = re.compile(r"^v?\d+(\.\d+)*([-+][0-9A-Za-z.-]+)?$")
           SHORT_SHA = re.compile(r"^[0-9a-f]{7,39}$")
           PUBLISHER = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
-          bad, inherits, floats, checked = [], [], [], 0
+          bad, inherits, floats, pushes, checked, actions = [], [], [], [], 0, 0
           for path in files:
               lines = open(path, encoding="utf-8").read().split("\n")
               for n, line in enumerate(lines, 1):
+                  # BEGIN bare-push (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
+                  if (PUSH.search(line)
+                          # BEGIN push-comment (a YAML or shell comment line is not a push)
+                          and not line.lstrip().startswith("#")
+                          # END push-comment
+                          ):
+                      pushes.append("%s:%d: a bare `%s push`; push charts through krateo-blueprints/charts/.github/actions/push-chart@<40-hex sha> # X.Y.Z, which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, PUSH.search(line).group(2)))
+                  # END bare-push
                   m = USES.match(line)
                   if not m:
                       continue
                   target, comment = m.group(2), (m.group(3) or "").strip()
-                  if target.startswith(("./", "docker://")) or "/.github/workflows/" not in target:
+                  is_action = False
+                  # BEGIN action-scope (a shared action from this repository is checked, though other actions are not)
+                  is_action = target.lower().startswith(SHARED_ACTIONS)
+                  # END action-scope
+                  if target.startswith(("./", "docker://")) or ("/.github/workflows/" not in target and not is_action):
                       continue
-                  checked += 1
                   ref = target.rpartition("@")[2] if "@" in target else ""
                   where = "%s:%d: %s" % (path, n, target)
+                  if is_action:
+                      actions += 1
+                      # BEGIN action-sha
+                      if not SHA.match(ref):
+                          bad.append("%s is pinned to %r, not a 40-hex commit SHA; a shared action from krateo-blueprints/charts is always pinned `@<sha> # X.Y.Z` and never floated (PUBLISHING.md rule 14)" % (where, ref))
+                          continue
+                      # END action-sha
+                      # BEGIN action-comment
+                      if not VERSION.match(comment):
+                          bad.append("%s has comment %r; a shared action from krateo-blueprints/charts needs `# X.Y.Z`, the charts tag its commit carries (PUBLISHING.md rule 14)" % (where, comment))
+                      # END action-comment
+                      continue
+                  checked += 1
                   owner = target.split("/", 1)[0].lower()
                   # BEGIN inherit-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if owner != caller_owner:
@@ -230,8 +275,8 @@ jobs:
                   # END sha-check
           for where, date, reason in floats:
               print("::notice title=floating reusable workflow::%s floats since %s, reason: %s" % (where, date, reason))
-          for b in bad + inherits:
+          for b in bad + inherits + pushes:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit" % (len(files), checked, len(bad), len(floats), len(inherits)))
-          sys.exit(1 if bad or inherits else 0)
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit, %d shared-action uses, %d bare chart push(es) (PUBLISHING.md rule 14)" % (len(files), checked, len(bad), len(floats), len(inherits), actions, len(pushes)))
+          sys.exit(1 if bad or inherits or pushes else 0)
           PY

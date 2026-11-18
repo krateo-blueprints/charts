@@ -224,7 +224,8 @@ No release reported any of this.
 
      Local workflows (`./...`) move with the caller's own commit and are not checked. Actions
      (`owner/repo@ref`, such as `actions/checkout`) are out of this rule's scope (#20, decided
-     2026-11-18).
+     2026-11-18), except the shared actions this repository publishes, which rule 14 pins the same
+     way and `pinned-uses.yaml` checks.
    - **Secrets cross organisations by name, never by `inherit`.** `secrets: inherit` passes nothing
      to a reusable workflow owned by another organisation, and nothing reports it: the called
      workflow reads each secret as empty. krateo-platformops/.github's `release-notes.yaml` then
@@ -304,6 +305,64 @@ No release reported any of this.
     pre-release handed to the publisher by mistake fails the content gate before anything is
     stored. Measured on 2026-11-18, all 3,186 entries in the `blueprints` and `operators` indexes
     were already plain `X.Y.Z`, so the rule refuses nothing that has ever been published.
+
+14. **Every chart is pushed through one shared action, which survives GHCR's tag race.** GHCR
+    sometimes accepts a chart's manifest PUT and then answers 404 to the GET by digest that helm's
+    Tag step makes about a second later:
+
+    ```
+    Error: failed to perform "Tag" on destination: sha256:<digest>: not found
+    ```
+
+    The push fails and leaves an untagged manifest behind. On 2026-11-18 this failed the keycloak
+    operator KOG 0.11.0 release and krateo-blueprints/rabbitmq-operator-blueprint's pre-release run
+    44279368853. krateo-platformops/.github's `chart-push` action had already retried it since
+    2026-11-13, after portal 1.8.115 and 1.8.116. A bare `helm push` has nothing between that error
+    and a red release, and a per-repository copy of the fix drifts. So:
+    - **The action:** a workflow pushes each packaged chart with
+      `krateo-blueprints/charts/.github/actions/push-chart`, pinned like a reusable workflow (rule 9),
+      by full commit SHA with the charts tag in a comment. This repository is tagged, so the dated
+      `# main YYYY-MM-DD` form doesn't apply, and the action is never floated, because it receives the
+      caller's registry write credentials:
+
+      ```yaml
+          - name: Push the chart
+            id: push
+            uses: krateo-blueprints/charts/.github/actions/push-chart@<40-hex sha> # 1.4.0
+            with:
+              chart: dist/<name>-<version>.tgz
+              repository: oci://ghcr.io/krateo-blueprints/charts
+              registry-username: ${{ github.actor }}
+              registry-password: ${{ secrets.GITHUB_TOKEN }}
+      ```
+
+      Credentials are inputs passed by name, never through `secrets: inherit`, which carries nothing
+      across organisations (rule 9). The action refuses an empty input before anything is sent, logs
+      in with the token on stdin, and outputs the pushed manifest digest as `digest`. The caller
+      sets up helm and grants `packages: write`.
+    - **What it retries:** that exact error and nothing else. It waits, polling up to 10 times 3 s
+      apart, until the registry serves bytes that hash to the digest, then pushes the same untouched
+      archive again. helm 4 takes the manifest's created time from the archive's modification time,
+      so the second push has the same digest. If it reports another digest, the action fails rather
+      than leave the tag on a manifest other than the one first pushed. Any other error fails at
+      once, and so does a digest still not served after the last poll.
+    - **No bare push:** a `helm push` or `oras push` in any workflow is refused. `pinned-uses.yaml`
+      checks this beside rule 9, so every repository that already runs it from its lint is checked
+      with no new job. It refuses every uncommented line that runs either command; a line that is a
+      YAML or shell comment is not a push. The check reads workflow files only, so a push inside a
+      script a workflow runs, or through a variable, isn't seen; such scripts are replaced by the
+      action, not hidden from the check. It can't tell an `oras push` of a chart from one of another
+      artifact, so a non-chart `oras push` is decided here first.
+    - **Shared reusables too:** a reusable workflow that pushes charts for its callers, such as
+      krateo-platformops/.github's `release-oci.yaml`, pushes through this action. Its
+      `chart-push` action retries blind, three times with a growing backoff, and never checks
+      the digest. This action supersedes it.
+
+    `test-push-chart.yaml` runs the action's script against stand-in helm and curl in the seven
+    cases it was written for, and requires each of six mutants of the script to be caught. Those
+    are a retry on any error, the `: not found` suffix dropped, the Tag operation dropped, no
+    poll, no digest comparison and no body hash. It then tests the action's own step, and calls
+    the action through `uses:`.
 
 ## Scope
 

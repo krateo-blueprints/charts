@@ -1,0 +1,84 @@
+name: push-chart
+description: >-
+  Push one packaged Helm chart to an OCI registry, retrying GHCR's tag read-after-write race and nothing else.
+  Every chart push in the organisation goes through this action (PUBLISHING.md rule 14).
+
+# GHCR sometimes accepts a chart manifest PUT and then 404s the GET-by-digest that helm's Tag step makes about a
+# second later:
+#     failed to perform "Tag" on destination: sha256:<digest>: not found
+# leaving an untagged manifest. Seen twice on 2026-11-18: the keycloak operator KOG 0.11.0 release, and
+# krateo-blueprints/rabbitmq-operator-blueprint pre-release run 44279368853. push-chart.sh, beside this file, retries
+# on that exact error only: it polls until the registry serves bytes hashing to that digest, re-pushes the same
+# untouched archive and fails if the second push reports another digest. Any other error fails at once. Its header
+# says how, and test/push-chart/run-cases.py proves each part with stand-in helm and curl.
+#
+# Usage, pinned like every other shared code (PUBLISHING.md rules 9 and 14):
+#
+#   - name: Push the chart
+#     id: push
+#     uses: krateo-blueprints/charts/.github/actions/push-chart@<40-hex sha> # X.Y.Z
+#     with:
+#       chart: dist/<name>-<version>.tgz
+#       repository: oci://ghcr.io/krateo-blueprints/charts
+#       registry-username: ${{ github.actor }}
+#       registry-password: ${{ secrets.GITHUB_TOKEN }}
+#
+# The caller installs helm (the race retry relies on a re-push of the same archive giving the same digest, which
+# helm 4 does; a helm that does not makes the retry fail loudly, never tag another manifest). The job needs
+# `packages: write` for GHCR. Credentials are inputs, passed by name: `secrets: inherit` passes nothing across
+# organisations (rule 9), and an empty one is refused here before anything is sent.
+
+inputs:
+  chart:
+    description: "path to one packaged chart archive (.tgz), as `helm package` wrote it"
+    required: true
+  repository:
+    description: "OCI repository to push to, oci://REGISTRY/PATH, for example oci://ghcr.io/krateo-blueprints/charts"
+    required: true
+  registry-username:
+    description: "user name for the registry (for GHCR, github.actor)"
+    required: true
+  registry-password:
+    description: "token for the registry, with package write access (for GHCR, secrets.GITHUB_TOKEN with packages: write)"
+    required: true
+
+outputs:
+  digest:
+    description: "the manifest digest the registry holds under the chart's tag (sha256:...)"
+    value: ${{ steps.push.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    # Inputs reach the shell through env, never interpolated into it. `required: true` is not enforced for an action's
+    # inputs, so each one is checked here: an empty credential, as a cross-org `secrets: inherit` produces, fails before
+    # anything is sent.
+    - name: Push the chart, retrying GHCR's tag read-after-write race only
+      id: push
+      shell: bash
+      env:
+        CHART: ${{ inputs.chart }}
+        REPOSITORY: ${{ inputs.repository }}
+        REGISTRY_USER: ${{ inputs.registry-username }}
+        REGISTRY_TOKEN: ${{ inputs.registry-password }}
+      run: |
+        set -euo pipefail
+        # BEGIN input-check (test/push-chart/run-cases.py deletes this block to prove its cases see it)
+        for v in CHART REPOSITORY REGISTRY_USER REGISTRY_TOKEN; do
+          [ -n "${!v}" ] || { echo "::error::push-chart: input for ${v} is empty; pass chart, repository, registry-username and registry-password by name"; exit 1; }
+        done
+        # END input-check
+        [[ "$REPOSITORY" == oci://*/* ]] || { echo "::error::push-chart: repository must be oci://REGISTRY/PATH, got '${REPOSITORY}'"; exit 1; }
+        host="${REPOSITORY#oci://}"; host="${host%%/*}"
+        # One identity for the push and for push-chart.sh's read-back of the manifest. The token goes on stdin, never argv.
+        # BEGIN login
+        printf '%s' "$REGISTRY_TOKEN" | helm registry login "$host" --username "$REGISTRY_USER" --password-stdin
+        # END login
+        log="$(mktemp)"
+        bash "${GITHUB_ACTION_PATH}/push-chart.sh" "$CHART" "$REPOSITORY" | tee "$log"
+        digest="$(sed -n 's/^Digest: \(sha256:[0-9a-f]\{64\}\)$/\1/p' "$log" | head -n1)"
+        # BEGIN digest-check
+        [ -n "$digest" ] || { echo "::error::push-chart: the push of ${CHART} succeeded but reported no 'Digest: sha256:...' line, so there is no digest to output"; exit 1; }
+        # END digest-check
+        echo "digest=${digest}" >> "$GITHUB_OUTPUT"
+        echo "pushed ${CHART} to ${REPOSITORY} at ${digest}"

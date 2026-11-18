@@ -1,0 +1,130 @@
+name: test-push-chart
+
+# Self-test for the shared push-chart action (PUBLISHING.md rule 14).
+#
+#   - cases: test/push-chart/run-cases.py. push-chart.sh against stand-in helm and curl, in the 7 cases of the
+#     script it was copied from (krateo-blueprints/rabbitmq-operator-blueprint e22d03a hack/validate-push-chart.py):
+#     a first push that succeeds, the race retried after the digest is served, two near misses of the race string
+#     that must not be retried, a digest never served, a second push on another digest and a served body that does
+#     not hash to the digest. Then its 6 mutants (retry on any error, the ': not found' suffix dropped, the Tag
+#     operation dropped, no poll, no digest comparison, no body hash), each of which some case must catch. Then the
+#     action's own step, read out of action.yml: the digest output, the login (token on stdin, never in argv or the
+#     log), empty inputs refused before helm runs, a push with no digest refused; and its block mutants.
+#   - through-uses-race / through-uses-other: the action called through `uses:` on a runner, with the stand-ins first
+#     on PATH. That proves the wiring the cases cannot see: inputs reaching the step, GITHUB_ACTION_PATH finding the
+#     script, the digest reaching steps.<id>.outputs. A refusal can't run as a failing job here without turning this
+#     repository's CI red, so the other-error call runs with continue-on-error and its outcome is asserted.
+#
+# No registry is contacted: the stand-in helm and curl answer for reg.stand.in, and the password is a fixed
+# placeholder, not a secret.
+
+on:
+  pull_request:
+    paths:
+      - .github/actions/push-chart/**
+      - .github/workflows/test-push-chart.yaml
+      - test/push-chart/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/actions/push-chart/**
+      - .github/workflows/test-push-chart.yaml
+      - test/push-chart/**
+
+permissions:
+  contents: read
+
+jobs:
+  cases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Every case gets the verdict it should, and every mutant is caught
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          PYTHONDONTWRITEBYTECODE=1 /tmp/venv/bin/python test/push-chart/run-cases.py
+
+  through-uses-race:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Stage the stand-ins for the race (the digest served on the second poll)
+        run: |
+          set -euo pipefail
+          stub="${RUNNER_TEMP}/stub"
+          expected="$(PYTHONDONTWRITEBYTECODE=1 python3 test/push-chart/run-cases.py --stage "$stub" race)"
+          [ -n "$expected" ] || { echo "::error::staging printed no expected digest"; exit 1; }
+          {
+            echo "STUB=${stub}"
+            echo "EXPECTED=${expected}"
+            echo "PUSH_POLL_INTERVAL=0"
+          } >> "$GITHUB_ENV"
+          echo "${stub}/bin" >> "$GITHUB_PATH"
+
+      - name: Push through the action
+        id: push
+        uses: ./.github/actions/push-chart
+        with:
+          chart: ${{ runner.temp }}/stub/demo-0.1.0.tgz
+          repository: oci://reg.stand.in/org/charts
+          registry-username: stand-in-user
+          registry-password: stand-in-placeholder-not-a-secret
+
+      - name: The digest output is the pushed digest, after exactly two pushes and one login
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [ "$DIGEST" = "$EXPECTED" ] || { echo "::error::digest output '${DIGEST}', expected ${EXPECTED}"; exit 1; }
+          [ "$(cat "$STUB/helm.calls")" = 2 ] || { echo "::error::$(cat "$STUB/helm.calls") pushes, expected 2"; exit 1; }
+          [ "$(cat "$STUB/login.calls")" = 1 ] || { echo "::error::$(cat "$STUB/login.calls") logins, expected 1"; exit 1; }
+          grep -q -- '--password-stdin' "$STUB/login.args" || { echo "::error::login did not read the token from stdin"; exit 1; }
+          echo "digest ${DIGEST} after the race, 2 pushes, 1 login"
+
+  through-uses-other:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Stage the stand-ins for another error (a near miss of the race string)
+        run: |
+          set -euo pipefail
+          stub="${RUNNER_TEMP}/stub"
+          PYTHONDONTWRITEBYTECODE=1 python3 test/push-chart/run-cases.py --stage "$stub" other > /dev/null
+          echo "STUB=${stub}" >> "$GITHUB_ENV"
+          echo "${stub}/bin" >> "$GITHUB_PATH"
+
+      - name: Push through the action (must fail)
+        id: push
+        continue-on-error: true
+        uses: ./.github/actions/push-chart
+        with:
+          chart: ${{ runner.temp }}/stub/demo-0.1.0.tgz
+          repository: oci://reg.stand.in/org/charts
+          registry-username: stand-in-user
+          registry-password: stand-in-placeholder-not-a-secret
+
+      - name: The action failed after one push, unretried, with no digest output
+        env:
+          OUTCOME: ${{ steps.push.outcome }}
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          [ "$OUTCOME" = failure ] || { echo "::error::outcome '${OUTCOME}', expected failure"; exit 1; }
+          [ -z "$DIGEST" ] || { echo "::error::a failed push output digest '${DIGEST}'"; exit 1; }
+          [ "$(cat "$STUB/helm.calls")" = 1 ] || { echo "::error::$(cat "$STUB/helm.calls") pushes, expected 1"; exit 1; }
+          echo "refused after 1 push, no digest output"
