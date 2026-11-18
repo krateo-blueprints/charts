@@ -19,15 +19,26 @@ name: pinned-uses
 #     whether it is stale. The dated form is transitional: krateo-platformops/.github will tag its
 #     workflows (charts#23), and callers then move to `# X.Y.Z`.
 # The one exception is a deliberate float, recorded at the line where it happens:
-#     uses: owner/repo/.github/workflows/x.yaml@main # floating: <reason>
-# accepted only for a branch ref, with a non-empty reason, and never for the publisher
-# (krateo-blueprints/charts publish-chart.yaml), which receives an org-wide write token and stays
-# pinned. `floating` on a 40-hex pin is refused as meaningless, and on a tag or an abbreviated SHA
-# as not a branch. A ref is read as a tag when it looks like a version (`1`, `1.1.0`, `v7`) and as an
-# abbreviated SHA when it is 7 to 39 hex characters; the check makes no network call, so a branch
-# named like either is refused, not guessed at. Each accepted float is printed with its reason.
-# (Decided by Diego for nova-kog, 2026-11-07, reaffirmed 2026-11-18: krateo-platformops/.github may
-# float at main where a repository chooses to; the publisher may not.)
+#     uses: owner/repo/.github/workflows/x.yaml@main # floating: YYYY-MM-DD <reason>
+# It is a first-class form of the comment check, beside `# X.Y.Z` and `# main YYYY-MM-DD`, and is
+# accepted only when every claim the check can verify holds:
+#   - the date is a real calendar date, so a float's age is visible;
+#   - there is a reason: inline after the date or, when the line has none, the comment block
+#     immediately above the `uses:` line, inside the same job with no blank line between (for a
+#     rationale too long for one line);
+#   - the reusable's owner is org-owned (krateo-platformops or krateo-blueprints); another owner's
+#     code is never floated;
+#   - it is not the publisher (krateo-blueprints/charts publish-chart.yaml), which receives an
+#     org-wide write token and stays pinned;
+#   - the ref is a branch. `floating` on a 40-hex pin is refused as meaningless. A ref that looks
+#     like a version (`1`, `1.1.0`, `v7`) or is 7 to 39 hex characters is read as a tag or an
+#     abbreviated SHA and refused; the check makes no network call, so a branch named like either is
+#     refused, not guessed at.
+# Every accepted float is printed with its file, line, date and reason, and the summary line always
+# counts floats next to the unpinned and the cross-org inherits, so a lazy float is visible, not
+# hidden behind a green "0 not pinned".
+# (Decided by Diego for nova-kog, 2026-11-07, reaffirmed 2026-11-18: org-owned workflows may float
+# where a repository chooses to; the publisher may not.)
 # What is not checked: local workflows (`./...`), which move with the caller's own commit;
 # `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path). Rule 9 does
 # not cover actions (charts#20, decided 2026-11-18).
@@ -75,6 +86,7 @@ jobs:
           set -euo pipefail
           cd "${WORKDIR}"
           python3 -I - <<'PY'
+          import datetime
           import glob
           import os
           import re
@@ -114,9 +126,33 @@ jobs:
                   hi += 1
               return [k for k in range(lo, hi + 1) if k != i and significant(lines[k]) and indent(lines[k]) == col]
 
+          def real_date(text):
+              if not DATE.match(text):
+                  return False
+              try:
+                  datetime.date.fromisoformat(text)
+              except ValueError:
+                  return False
+              return True
+
+
+          def reason_above(lines, i):
+              # The comment block immediately above lines[i], in the same job: contiguous comment lines,
+              # no blank line between, indented at least as far as the `uses:` key.
+              col = indent(lines[i])
+              texts = []
+              k = i - 1
+              while k >= 0 and lines[k].strip().startswith("#") and indent(lines[k]) >= col:
+                  texts.append(lines[k].strip().lstrip("#").strip())
+                  k -= 1
+              return " ".join(t for t in reversed(texts) if t)
+
           SHA = re.compile(r"^[0-9a-f]{40}$")
           COMMENT = re.compile(r"^(\d+\.\d+\.\d+|main \d{4}-\d{2}-\d{2})$")
-          FLOATING = re.compile(r"^floating:(.*)$")
+          # `floating:`, then the date token, then an optional inline reason.
+          FLOATING = re.compile(r"^floating:\s*(\S*)\s*(.*)$")
+          DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+          FLOAT_OWNERS = ("krateo-platformops", "krateo-blueprints")
           TAGLIKE = re.compile(r"^v?\d+(\.\d+)*([-+][0-9A-Za-z.-]+)?$")
           SHORT_SHA = re.compile(r"^[0-9a-f]{7,39}$")
           PUBLISHER = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
@@ -133,53 +169,69 @@ jobs:
                   checked += 1
                   ref = target.rpartition("@")[2] if "@" in target else ""
                   where = "%s:%d: %s" % (path, n, target)
-                  # BEGIN inherit-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   owner = target.split("/", 1)[0].lower()
+                  # BEGIN inherit-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if owner != caller_owner:
                       for k in job_siblings(lines, n - 1):
                           if INHERIT.match(lines[k]):
                               inherits.append("%s:%d: `secrets: inherit` for %s, a reusable owned by %s, not %s: inherit passes nothing across organisations, so pass each secret by name under `secrets:`" % (path, k + 1, target, owner, caller_owner))
                   # END inherit-check
-                  # BEGIN floating-check (deleting it must turn the accepted floats into refusals)
-                  fm = FLOATING.match(comment)
-                  if fm:
-                      reason = fm.group(1).strip()
+                  float_form = FLOATING.match(comment)
+                  # BEGIN comment-check
+                  if not (COMMENT.match(comment)
+                          # BEGIN float-form (the float is a first-class comment form; without it a valid float is a format error)
+                          or float_form
+                          # END float-form
+                          ):
+                      bad.append("%s has comment %r; it needs `# X.Y.Z`, or `# main YYYY-MM-DD` for an untagged repository (transitional), or a recorded float `# floating: YYYY-MM-DD <reason>`" % (where, comment))
+                      continue
+                  # END comment-check
+                  # BEGIN float-accept (deleting it must turn the accepted floats into refusals)
+                  if float_form:
+                      date, reason = float_form.group(1), float_form.group(2).strip()
+                      # BEGIN float-date
+                      if not real_date(date):
+                          bad.append("%s floats with %r where the date belongs; write `# floating: YYYY-MM-DD <reason>` with a real date" % (where, date))
+                          continue
+                      # END float-date
+                      if not reason:
+                          reason = reason_above(lines, n - 1)
                       # BEGIN float-reason
                       if not reason:
-                          bad.append("%s says `# floating:` with an empty reason; a float is accepted only with its reason written there" % where)
+                          bad.append("%s floats with no reason: none after the date, and no comment block immediately above the `uses:` line" % where)
                           continue
                       # END float-reason
-                      # BEGIN float-sha
-                      if SHA.match(ref):
-                          bad.append("%s is pinned to a commit and also says `# floating`, which is meaningless; keep the pin and use `# X.Y.Z` or `# main YYYY-MM-DD`" % where)
+                      # BEGIN float-owner
+                      if owner not in FLOAT_OWNERS:
+                          bad.append("%s floats a reusable owned by %s; only org-owned reusables (%s) may float" % (where, owner, ", ".join(FLOAT_OWNERS)))
                           continue
-                      # END float-sha
+                      # END float-owner
                       # BEGIN float-publisher
                       if target.rpartition("@")[0].lower() == PUBLISHER:
                           bad.append("%s floats the publisher, which receives an org-wide write token and is always pinned by commit SHA (PUBLISHING.md rule 9)" % where)
                           continue
                       # END float-publisher
+                      # BEGIN float-sha
+                      if SHA.match(ref):
+                          bad.append("%s is pinned to a commit and also says `# floating`, which is meaningless; keep the pin and use `# X.Y.Z` or `# main YYYY-MM-DD`" % where)
+                          continue
+                      # END float-sha
                       # BEGIN float-branch
                       if not ref or TAGLIKE.match(ref) or SHORT_SHA.match(ref):
                           bad.append("%s floats %r, which reads as a tag or an abbreviated SHA, not a branch; only a branch ref can be a recorded float" % (where, ref))
                           continue
                       # END float-branch
-                      floats.append((where, reason))
+                      floats.append((where, date, reason))
                       continue
-                  # END floating-check
+                  # END float-accept
                   # BEGIN sha-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if not SHA.match(ref):
-                      bad.append("%s is pinned to %r, not a 40-hex commit SHA (a deliberate float of a branch says `# floating: <reason>`)" % (where, ref))
-                      continue
+                      bad.append("%s is pinned to %r, not a 40-hex commit SHA (a deliberate float of a branch says `# floating: YYYY-MM-DD <reason>`)" % (where, ref))
                   # END sha-check
-                  # BEGIN comment-check
-                  if not COMMENT.match(comment):
-                      bad.append("%s has comment %r; it needs `# X.Y.Z` or, for an untagged repository, `# main YYYY-MM-DD`" % (where, comment))
-                  # END comment-check
-          for where, reason in floats:
-              print("::notice title=floating reusable workflow::%s floats, reason: %s" % (where, reason))
+          for where, date, reason in floats:
+              print("::notice title=floating reusable workflow::%s floats since %s, reason: %s" % (where, date, reason))
           for b in bad + inherits:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d cross-org secrets inherit, %d floating" % (len(files), checked, len(bad), len(inherits), len(floats)))
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d floating, %d cross-org secrets inherit" % (len(files), checked, len(bad), len(floats), len(inherits)))
           sys.exit(1 if bad or inherits else 0)
           PY

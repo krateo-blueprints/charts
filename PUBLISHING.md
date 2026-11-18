@@ -179,23 +179,40 @@ No release reported any of this.
      `# main YYYY-MM-DD`, the date of that commit, until it tags its workflows. Then callers move to
      `# X.Y.Z`. The dated form is **transitional**: krateo-platformops/.github will start tagging
      (#23), and the dated pins are then replaced, not kept as a second way to pin.
-   - **A deliberate float is recorded at the line, with its reason.** A repository may choose to follow
-     a reusable workflow's branch instead of a commit. It says so where it happens:
+   - **A deliberate float is recorded at the line, dated, with its reason.** A repository may choose
+     to follow an org-owned reusable workflow's branch instead of a commit. It says so where it
+     happens, either inline:
 
      ```yaml
-         uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating: <reason>
+         uses: krateo-platformops/.github/.github/workflows/security.yml@main # floating: 2026-11-07 <reason>
      ```
 
-     `pinned-uses.yaml` accepts that only for a branch ref and only with a non-empty reason, and prints
-     each accepted float with its reason, so every float stays visible in the caller's lint log. It
-     refuses: an empty reason; `floating` on a 40-hex pin (meaningless); `floating` on a tag or an
-     abbreviated SHA (not a branch: a ref that looks like a version, such as `1`, `1.1.0` or `v7`, or
-     that is 7 to 39 hex characters, is read as one, with no network lookup); and any float of the
-     publisher, `krateo-blueprints/charts/.github/workflows/publish-chart.yaml`, which receives
-     `CHARTS_PUBLISH_TOKEN` and is always pinned. A float has no Dependabot pull request, by
-     definition: it moves whenever the branch does. (Diego, for openstack-nova-operator-kog,
-     2026-11-07, reaffirmed 2026-11-18: nova floats krateo-platformops/.github at `main`; the
-     publisher stays pinned.)
+     or, for a rationale longer than a line, with the marker alone and the reason as the comment block
+     immediately above the `uses:` line, inside the same job, with no blank line between:
+
+     ```yaml
+         # <reason, as many lines as it needs>
+         uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating: 2026-11-07
+     ```
+
+     `pinned-uses.yaml` treats this as a third comment form, beside `# X.Y.Z` and `# main YYYY-MM-DD`,
+     and accepts it only when what it can verify holds. It refuses:
+     - a missing or impossible date (the date makes a float's age visible);
+     - no reason, inline or in the block above;
+     - an owner outside the org-owned list (`krateo-platformops`, `krateo-blueprints`), since nobody
+       floats code someone else controls;
+     - the publisher, `krateo-blueprints/charts/.github/workflows/publish-chart.yaml`, which receives
+       `CHARTS_PUBLISH_TOKEN` and is always pinned;
+     - `floating` on a 40-hex pin, which is meaningless;
+     - a tag or an abbreviated SHA. With no network lookup, a ref that looks like a version (`1`,
+       `1.1.0`, `v7`) or is 7 to 39 hex characters reads as one, so a branch named like that is
+       refused.
+
+     Each accepted float is printed with its file, line, date and reason. The summary line always
+     reads `P not pinned, F floating, I cross-org secrets inherit`, so a float is never hidden behind
+     a bare "0 not pinned". A float gets no Dependabot pull request, by definition: it moves whenever
+     the branch does. (Diego, for openstack-nova-operator-kog, 2026-11-07, reaffirmed 2026-11-18:
+     nova floats its krateo-platformops/.github workflows at `main`; the publisher stays pinned.)
    - **Enforced, not described:** every repository calls `pinned-uses.yaml` from its lint, pinned the
      same way. It refuses any non-local `uses:` of a reusable workflow whose ref is not 40 hex
      characters with one of those two comments, unless it is a recorded float as above:
