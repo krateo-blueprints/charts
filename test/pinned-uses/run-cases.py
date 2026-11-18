@@ -5,9 +5,12 @@ The step's shell is read out of the workflow file itself, so this tests the byte
 writes a .github/workflows/ directory into a temporary repository and runs the step there, the way the job
 runs it in a caller's checkout.
 
-Then the mutations. The script carries three marked blocks: `sha-check`, `comment-check` and `inherit-check`.
-Each is deleted in turn, and the cases that block exists for must flip to passing. A case that a mutant still
-refuses is refused by something else, so it would prove nothing about that block, and this fails.
+Then the mutations. The script carries marked blocks: `sha-check`, `comment-check`, `inherit-check`,
+`floating-check` (which accepts a recorded float) and, inside it, the four refusals `float-reason`, `float-sha`,
+`float-publisher` and `float-branch`. Each is deleted in turn, and the cases that block exists for must flip
+to the opposite verdict: a refused case to passing, an accepted float to refused. A case whose verdict a
+mutant leaves unchanged is decided by something else, so it would prove nothing about that block, and this
+fails.
 
 One more mutant replaces `inherit-check` with the text search that misread the 44 krateo-blueprints callers
 of release-notes.yaml on 2026-11-18: it counted every file containing `secrets: inherit`, including the
@@ -87,6 +90,40 @@ CASES = [
     ("caller unknown", {"a.yaml": jobs("    %s\n%s" % (XORG, NAMED))}, False, "CALLER (github.repository) is empty", None, {"caller": ""}),
 ]
 
+# A deliberate float (PUBLISHING.md rule 9): a branch ref with `# floating: <reason>`.
+XFLOAT = "uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@%s # floating: %s"
+REASON = "follows the org reusable at main, decided for nova-kog 2026-11-07"
+
+CASES += [
+    ("float a branch, with reason", {"a.yaml": job(XFLOAT % ("main", REASON))}, True,
+     "a.yaml:4: krateo-platformops/.github/.github/workflows/release-notes.yaml@main floats, reason: " + REASON, "floating-check"),
+    ("float a non-main branch", {"a.yaml": job(XFLOAT % ("release-2026", "staging the next cut"))}, True,
+     "0 not pinned (PUBLISHING.md rule 9), 0 cross-org secrets inherit, 1 floating", "floating-check"),
+    ("float, quoted target", {"a.yaml": job('uses: "krateo-platformops/.github/.github/workflows/security.yml@main" # floating: ' + REASON)}, True,
+     "1 floating", "floating-check"),
+    ("float among pins", {"a.yaml": job("uses: %s@%s # 1.1.0" % (RW, SHA)), "b.yaml": job(XFLOAT % ("main", REASON))}, True,
+     "2 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 cross-org secrets inherit, 1 floating", None),
+    ("float, empty reason", {"a.yaml": job("uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating:")}, False,
+     "with an empty reason", "float-reason"),
+    ("float, blank reason", {"a.yaml": job("uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating:    ")}, False,
+     "with an empty reason", "float-reason"),
+    ("float on a SHA pin", {"a.yaml": job(XFLOAT % (SHA, REASON))}, False,
+     "which is meaningless", "float-sha"),
+    ("float the publisher", {"a.yaml": job("uses: %s@main # floating: %s" % (RW, REASON))}, False,
+     "floats the publisher", "float-publisher"),
+    ("float the publisher, case", {"a.yaml": job("uses: Krateo-Blueprints/charts/.github/workflows/publish-chart.yaml@main # floating: " + REASON)}, False,
+     "floats the publisher", "float-publisher"),
+    ("float a tag", {"a.yaml": job(XFLOAT % ("1.1.0", REASON))}, False, "not a branch", "float-branch"),
+    ("float a v-tag", {"a.yaml": job(XFLOAT % ("v1", REASON))}, False, "not a branch", "float-branch"),
+    ("float an abbreviated sha", {"a.yaml": job(XFLOAT % ("788f1a6", REASON))}, False, "not a branch", "float-branch"),
+    # Not the exemption's syntax: the colon is required, so this is an unpinned branch.
+    ("floating without colon", {"a.yaml": job("uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating " + REASON)}, False,
+     "a deliberate float of a branch says `# floating: <reason>`", None),
+    # A float does not excuse the cross-org inherit.
+    ("float with cross-org inherit", {"a.yaml": jobs("    %s\n    secrets: inherit\n" % (XFLOAT % ("main", REASON)))}, False,
+     "0 not pinned (PUBLISHING.md rule 9), 1 cross-org secrets inherit, 1 floating", "inherit-check"),
+]
+
 NAIVE_BODY = """owner = target.split("/", 1)[0].lower()
 if owner != caller_owner and "secrets: inherit" in "\\n".join(lines):
     inherits.append("%s: naive text search found secrets: inherit" % where)"""
@@ -151,18 +188,25 @@ def main():
                                                      "success" if want_ok else "failure", want_text))
         if not good:
             print("      output: " + out.strip().replace("\n", "\n              "))
-    for block in ("sha-check", "comment-check", "inherit-check"):
+    blocks = ("sha-check", "comment-check", "inherit-check", "floating-check",
+              "float-reason", "float-sha", "float-publisher", "float-branch")
+    for block in blocks:
         mutant = without(script, block)
         for case in CASES:
-            name, files, _, _, tests = case[:5]
+            name, files, want_ok, _, tests = case[:5]
             if tests != block or name == "one bad among good":
                 continue
             ok, out = run(mutant, files, opts(case).get("caller", CALLER))
-            good = ok
+            good = ok != want_ok
             failures += not good
-            print("%s  without %-13s %-30s %s" % ("ok  " if good else "FAIL", block, name,
-                                                  "passes, so the case tests this block" if good else
-                                                  "STILL REFUSED: the case does not test this block"))
+            print("%s  without %-15s %-30s %s" % ("ok  " if good else "FAIL", block, name,
+                                                  "verdict flips, so the case tests this block" if good else
+                                                  "VERDICT UNCHANGED: the case does not test this block"))
+    # Every block is tested by at least one case: a block no case names is checked by nothing.
+    for block in blocks:
+        if not any(len(c) > 4 and c[4] == block for c in CASES):
+            failures += 1
+            print("FAIL  block %s has no case that tests it" % block)
     naive = replaced(script, "inherit-check", NAIVE_BODY)
     for case in CASES:
         if not opts(case).get("naive"):

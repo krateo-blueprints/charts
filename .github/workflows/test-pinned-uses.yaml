@@ -7,10 +7,14 @@ name: test-pinned-uses
 #     comment, a non-version comment, one bad file among good ones, and no workflow files at all; and
 #     for `secrets: inherit`: cross-org (plain, with a trailing comment, before `uses:`, quoted) is
 #     refused; same-org, named secrets, a mention in a comment, a commented-out key, an inherit in
-#     another job and a nested `secrets:` key pass; an empty caller fails. Then it deletes each marked
-#     block (sha-check, comment-check, inherit-check) and requires the cases that block exists for to
-#     pass, so each case is shown to test what it claims to. Last, it swaps inherit-check for a plain
-#     text search and requires that to refuse the mention cases, which it did to real callers.
+#     another job and a nested `secrets:` key pass; an empty caller fails; and for a recorded float
+#     (`# floating: <reason>`): a branch with a reason passes and is printed with it; an empty or blank
+#     reason, a float on a SHA pin, a float of the publisher, and a float of a tag, a v-tag or an
+#     abbreviated SHA are refused. Then it deletes each marked block (sha-check, comment-check,
+#     inherit-check, floating-check, float-reason, float-sha, float-publisher, float-branch) and
+#     requires each case that block exists for to flip its verdict, so each case is shown to test what
+#     it claims to, and every block has at least one such case. Last, it swaps inherit-check for a
+#     plain text search and requires that to refuse the mention cases, which it did to real callers.
 #   - this-repository: a real call through `uses:`, on this repository's own workflows, which rule 9
 #     covers like any caller's.
 

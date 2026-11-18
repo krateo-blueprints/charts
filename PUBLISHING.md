@@ -177,10 +177,28 @@ No release reported any of this.
    - **The comment:** `# X.Y.Z`, the tag that commit carries. A repository that publishes no tags yet
      (krateo-platformops/.github, as of 2026-11-18) is pinned to a commit on its `main` with the comment
      `# main YYYY-MM-DD`, the date of that commit, until it tags its workflows. Then callers move to
-     `# X.Y.Z`.
+     `# X.Y.Z`. The dated form is **transitional**: krateo-platformops/.github will start tagging
+     (#23), and the dated pins are then replaced, not kept as a second way to pin.
+   - **A deliberate float is recorded at the line, with its reason.** A repository may choose to follow
+     a reusable workflow's branch instead of a commit. It says so where it happens:
+
+     ```yaml
+         uses: krateo-platformops/.github/.github/workflows/release-notes.yaml@main # floating: <reason>
+     ```
+
+     `pinned-uses.yaml` accepts that only for a branch ref and only with a non-empty reason, and prints
+     each accepted float with its reason, so every float stays visible in the caller's lint log. It
+     refuses: an empty reason; `floating` on a 40-hex pin (meaningless); `floating` on a tag or an
+     abbreviated SHA (not a branch: a ref that looks like a version, such as `1`, `1.1.0` or `v7`, or
+     that is 7 to 39 hex characters, is read as one, with no network lookup); and any float of the
+     publisher, `krateo-blueprints/charts/.github/workflows/publish-chart.yaml`, which receives
+     `CHARTS_PUBLISH_TOKEN` and is always pinned. A float has no Dependabot pull request, by
+     definition: it moves whenever the branch does. (Diego, for openstack-nova-operator-kog,
+     2026-11-07, reaffirmed 2026-11-18: nova floats krateo-platformops/.github at `main`; the
+     publisher stays pinned.)
    - **Enforced, not described:** every repository calls `pinned-uses.yaml` from its lint, pinned the
      same way. It refuses any non-local `uses:` of a reusable workflow whose ref is not 40 hex
-     characters with one of those two comments:
+     characters with one of those two comments, unless it is a recorded float as above:
 
      ```yaml
        pinned-uses:

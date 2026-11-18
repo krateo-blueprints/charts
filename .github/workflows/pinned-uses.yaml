@@ -16,7 +16,18 @@ name: pinned-uses
 #   - a trailing comment naming what that commit is: `# X.Y.Z` (the tag it carries), or, for a
 #     repository that publishes no tags yet (krateo-platformops/.github), `# main YYYY-MM-DD`, the
 #     date of the main commit pinned. Without the comment nobody can tell what is pinned or
-#     whether it is stale.
+#     whether it is stale. The dated form is transitional: krateo-platformops/.github will tag its
+#     workflows (charts#23), and callers then move to `# X.Y.Z`.
+# The one exception is a deliberate float, recorded at the line where it happens:
+#     uses: owner/repo/.github/workflows/x.yaml@main # floating: <reason>
+# accepted only for a branch ref, with a non-empty reason, and never for the publisher
+# (krateo-blueprints/charts publish-chart.yaml), which receives an org-wide write token and stays
+# pinned. `floating` on a 40-hex pin is refused as meaningless, and on a tag or an abbreviated SHA
+# as not a branch. A ref is read as a tag when it looks like a version (`1`, `1.1.0`, `v7`) and as an
+# abbreviated SHA when it is 7 to 39 hex characters; the check makes no network call, so a branch
+# named like either is refused, not guessed at. Each accepted float is printed with its reason.
+# (Decided by Diego for nova-kog, 2026-11-07, reaffirmed 2026-11-18: krateo-platformops/.github may
+# float at main where a repository chooses to; the publisher may not.)
 # What is not checked: local workflows (`./...`), which move with the caller's own commit;
 # `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path). Rule 9 does
 # not cover actions (charts#20, decided 2026-11-18).
@@ -105,7 +116,11 @@ jobs:
 
           SHA = re.compile(r"^[0-9a-f]{40}$")
           COMMENT = re.compile(r"^(\d+\.\d+\.\d+|main \d{4}-\d{2}-\d{2})$")
-          bad, inherits, checked = [], [], 0
+          FLOATING = re.compile(r"^floating:(.*)$")
+          TAGLIKE = re.compile(r"^v?\d+(\.\d+)*([-+][0-9A-Za-z.-]+)?$")
+          SHORT_SHA = re.compile(r"^[0-9a-f]{7,39}$")
+          PUBLISHER = "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"
+          bad, inherits, floats, checked = [], [], [], 0
           for path in files:
               lines = open(path, encoding="utf-8").read().split("\n")
               for n, line in enumerate(lines, 1):
@@ -125,17 +140,46 @@ jobs:
                           if INHERIT.match(lines[k]):
                               inherits.append("%s:%d: `secrets: inherit` for %s, a reusable owned by %s, not %s: inherit passes nothing across organisations, so pass each secret by name under `secrets:`" % (path, k + 1, target, owner, caller_owner))
                   # END inherit-check
+                  # BEGIN floating-check (deleting it must turn the accepted floats into refusals)
+                  fm = FLOATING.match(comment)
+                  if fm:
+                      reason = fm.group(1).strip()
+                      # BEGIN float-reason
+                      if not reason:
+                          bad.append("%s says `# floating:` with an empty reason; a float is accepted only with its reason written there" % where)
+                          continue
+                      # END float-reason
+                      # BEGIN float-sha
+                      if SHA.match(ref):
+                          bad.append("%s is pinned to a commit and also says `# floating`, which is meaningless; keep the pin and use `# X.Y.Z` or `# main YYYY-MM-DD`" % where)
+                          continue
+                      # END float-sha
+                      # BEGIN float-publisher
+                      if target.rpartition("@")[0].lower() == PUBLISHER:
+                          bad.append("%s floats the publisher, which receives an org-wide write token and is always pinned by commit SHA (PUBLISHING.md rule 9)" % where)
+                          continue
+                      # END float-publisher
+                      # BEGIN float-branch
+                      if not ref or TAGLIKE.match(ref) or SHORT_SHA.match(ref):
+                          bad.append("%s floats %r, which reads as a tag or an abbreviated SHA, not a branch; only a branch ref can be a recorded float" % (where, ref))
+                          continue
+                      # END float-branch
+                      floats.append((where, reason))
+                      continue
+                  # END floating-check
                   # BEGIN sha-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if not SHA.match(ref):
-                      bad.append("%s is pinned to %r, not a 40-hex commit SHA" % (where, ref))
+                      bad.append("%s is pinned to %r, not a 40-hex commit SHA (a deliberate float of a branch says `# floating: <reason>`)" % (where, ref))
                       continue
                   # END sha-check
                   # BEGIN comment-check
                   if not COMMENT.match(comment):
                       bad.append("%s has comment %r; it needs `# X.Y.Z` or, for an untagged repository, `# main YYYY-MM-DD`" % (where, comment))
                   # END comment-check
+          for where, reason in floats:
+              print("::notice title=floating reusable workflow::%s floats, reason: %s" % (where, reason))
           for b in bad + inherits:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d cross-org secrets inherit" % (len(files), checked, len(bad), len(inherits)))
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d cross-org secrets inherit, %d floating" % (len(files), checked, len(bad), len(inherits), len(floats)))
           sys.exit(1 if bad or inherits else 0)
           PY
