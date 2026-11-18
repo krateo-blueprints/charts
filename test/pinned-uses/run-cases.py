@@ -177,8 +177,10 @@ CASES += [
      "0 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 floating, 0 cross-org secrets inherit, 1 shared-action uses, 0 bare chart push(es)", None),
     ("shared action pinned, tagged", {"a.yaml": steps("- uses: %s@%s # 1.0.0" % (ACT, SHA))}, True, "1 shared-action uses, 0 bare", None),
     ("shared action, quoted", {"a.yaml": steps('- uses: "%s@%s" # main 2026-11-18' % (ACT, SHA))}, True, "1 shared-action uses", None),
-    # release-oci.yaml's call today
-    ("shared action at main", {"a.yaml": steps("- uses: %s@main" % ACT)}, False,
+    # release-oci.yaml's call today: refused by the ref and by the missing comment, so neither deletion alone flips it.
+    ("shared action at main, as release-oci", {"a.yaml": steps("- uses: %s@main" % ACT)}, False,
+     "not a 40-hex commit SHA; the shared chart-push action is always pinned by commit", None),
+    ("shared action at main, dated comment", {"a.yaml": steps("- uses: %s@main # main 2026-11-17" % ACT)}, False,
      "not a 40-hex commit SHA; the shared chart-push action is always pinned by commit", "action-sha"),
     ("shared action tag ref", {"a.yaml": steps("- uses: %s@1.0.0 # 1.0.0" % ACT)}, False, "is pinned to '1.0.0'", "action-sha"),
     ("shared action abbreviated sha", {"a.yaml": steps("- uses: %s@f25d6b5 # main 2026-11-17" % ACT)}, False, "1 shared-action uses", "action-scope"),
