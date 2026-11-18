@@ -1,0 +1,4 @@
+#!/bin/sh
+# Fixture: a repository whose precondition is not met. Its release must publish nothing.
+echo "fixture: refusing release $1"
+exit 1

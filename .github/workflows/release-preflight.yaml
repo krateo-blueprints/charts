@@ -1,0 +1,73 @@
+name: release-preflight
+
+# A repository's own last word before its release publishes anything (PUBLISHING.md rule 12).
+#
+# Some preconditions only the repository can state. Example: a fixture in examples/ that names the
+# version being released, which nothing stamps. Written as a comment, such a precondition gets missed;
+# openstack-neutron-operator-kog's example Composition named v0-1-0 through 0.1.1. This gives every
+# repository one place to make it refuse instead: an executable `hack/release-preflight`, run with the
+# version as $1, whose non-zero exit fails this job. The caller's publishing job declares
+# `needs:` on this one, so a refusal means nothing is stamped, pushed, indexed or released.
+#
+#   - No `hack/release-preflight`: the job passes and says so. The repository behaves as before.
+#   - Present but not an executable file: the job FAILS. A guard whose executable bit was lost (a
+#     checkout on a filesystem without modes, or a `git add` without `--chmod=+x`) would otherwise be
+#     skipped exactly when it was meant to run, and the release would look checked.
+#   - Present and executable: it runs from the repository root, or from `working-directory`, and its
+#     exit code is this job's.
+#
+# The hook runs on the caller's checkout, at the commit that triggered the caller (the tag's commit on
+# a tag push), with read-only contents permission and no secrets.
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "the version being released, passed to hack/release-preflight as $1 (usually the tag)"
+        type: string
+        required: true
+      working-directory:
+        description: "directory, relative to the repository root, that holds hack/release-preflight (default: the root)"
+        type: string
+        required: false
+        default: "."
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the caller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Inputs reach the script through env, never interpolated into it: a version string is caller
+      # data, and `${{ }}` inside `run:` would splice it into the shell source.
+      - name: Run hack/release-preflight
+        env:
+          VERSION: ${{ inputs.version }}
+          WORKDIR: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          hook="hack/release-preflight"
+          if [ -z "${VERSION}" ]; then
+            echo "::error::release-preflight was called with an empty version; nothing to check it against."
+            exit 1
+          fi
+          cd "${WORKDIR}"
+          if [ ! -e "${hook}" ] && [ ! -L "${hook}" ]; then
+            echo "No ${hook} in ${WORKDIR}: this repository declares no release preflight. Passing."
+            exit 0
+          fi
+          if [ ! -f "${hook}" ]; then
+            echo "::error::${hook} exists but is not a regular file (a dangling link or a directory), so it cannot run. Refusing the release."
+            exit 1
+          fi
+          if [ ! -x "${hook}" ]; then
+            echo "::error::${hook} exists but is not executable, so the guard it holds would be skipped. Refusing the release. Fix: git update-index --chmod=+x ${hook}"
+            exit 1
+          fi
+          echo "Running ${hook} ${VERSION}"
+          "./${hook}" "${VERSION}"
