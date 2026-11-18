@@ -22,6 +22,18 @@ name: pinned-uses
 # not cover actions (charts#20, decided 2026-11-18).
 #
 # A repository with no workflow file at all fails: a check that read nothing has checked nothing.
+#
+# Also checked, on the same `uses:`: no `secrets: inherit` when the reusable's owner is not the
+# caller's owner. `inherit` passes nothing to a reusable in another organisation, and nothing says so:
+# the called workflow reads every secret as '' and decides for itself what that means.
+# krateo-platformops/.github's release-notes.yaml reads it as "no credential is set for this org",
+# skips every step and reports success. openstack-keystone-operator-kog shipped 0.4.1 and 0.4.2 that
+# way (release-notes runs 43481711323 and 44232413718) while the org secret was set, until its caller
+# passed the secrets by name (openstack-keystone-operator-kog#33, krateo-platformops/.github#57). Only
+# the uncommented key counts: callers that were fixed explain the fix in a comment that quotes
+# `secrets: inherit`, and a text search counted all 44 krateo-blueprints callers of release-notes.yaml
+# as inheriting when one did. The caller's owner comes from github.repository; if it is empty the
+# check fails rather than skipping.
 
 on:
   workflow_call:
@@ -44,14 +56,16 @@ jobs:
           persist-credentials: false
 
       # The directory reaches the script through env, never interpolated into it.
-      - name: Every reusable workflow is pinned by commit SHA with a version comment
+      - name: Every reusable workflow is pinned by commit SHA with a version comment, and gets no cross-org secrets inherit
         env:
           WORKDIR: ${{ inputs.working-directory }}
+          CALLER: ${{ github.repository }}
         run: |
           set -euo pipefail
           cd "${WORKDIR}"
           python3 -I - <<'PY'
           import glob
+          import os
           import re
           import sys
 
@@ -59,12 +73,42 @@ jobs:
           if not files:
               print("::error::no .github/workflows/*.yaml or *.yml here, so nothing was checked")
               sys.exit(1)
+          caller_owner = os.environ.get("CALLER", "").partition("/")[0].lower()
+          if not caller_owner:
+              print("::error::CALLER (github.repository) is empty, so a cross-org `secrets: inherit` could not be told from a same-org one")
+              sys.exit(1)
           USES = re.compile(r"""^\s*(?:-\s+)?uses:\s*(['"]?)([^'"\s#]+)\1\s*(?:#\s*(.*?))?\s*$""")
+          # The key itself, never a comment that quotes it: a line whose first non-blank is `#` cannot match.
+          INHERIT = re.compile(r"""^(\s*)secrets:\s*(['"]?)inherit\2\s*(?:#.*)?$""")
+
+
+          def indent(line):
+              return len(line) - len(line.lstrip(" "))
+
+
+          def significant(line):
+              t = line.strip()
+              return t != "" and not t.startswith("#")
+
+
+          def job_siblings(lines, i):
+              # The other keys of the job whose `uses:` is lines[i]: lines at the same column, inside the
+              # run of significant lines indented at least that far around it.
+              col = indent(lines[i])
+              lo = i
+              while lo > 0 and (not significant(lines[lo - 1]) or indent(lines[lo - 1]) >= col):
+                  lo -= 1
+              hi = i
+              while hi + 1 < len(lines) and (not significant(lines[hi + 1]) or indent(lines[hi + 1]) >= col):
+                  hi += 1
+              return [k for k in range(lo, hi + 1) if k != i and significant(lines[k]) and indent(lines[k]) == col]
+
           SHA = re.compile(r"^[0-9a-f]{40}$")
           COMMENT = re.compile(r"^(\d+\.\d+\.\d+|main \d{4}-\d{2}-\d{2})$")
-          bad, checked = [], 0
+          bad, inherits, checked = [], [], 0
           for path in files:
-              for n, line in enumerate(open(path, encoding="utf-8"), 1):
+              lines = open(path, encoding="utf-8").read().split("\n")
+              for n, line in enumerate(lines, 1):
                   m = USES.match(line)
                   if not m:
                       continue
@@ -74,6 +118,13 @@ jobs:
                   checked += 1
                   ref = target.rpartition("@")[2] if "@" in target else ""
                   where = "%s:%d: %s" % (path, n, target)
+                  # BEGIN inherit-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
+                  owner = target.split("/", 1)[0].lower()
+                  if owner != caller_owner:
+                      for k in job_siblings(lines, n - 1):
+                          if INHERIT.match(lines[k]):
+                              inherits.append("%s:%d: `secrets: inherit` for %s, a reusable owned by %s, not %s: inherit passes nothing across organisations, so pass each secret by name under `secrets:`" % (path, k + 1, target, owner, caller_owner))
+                  # END inherit-check
                   # BEGIN sha-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
                   if not SHA.match(ref):
                       bad.append("%s is pinned to %r, not a 40-hex commit SHA" % (where, ref))
@@ -83,8 +134,8 @@ jobs:
                   if not COMMENT.match(comment):
                       bad.append("%s has comment %r; it needs `# X.Y.Z` or, for an untagged repository, `# main YYYY-MM-DD`" % (where, comment))
                   # END comment-check
-          for b in bad:
+          for b in bad + inherits:
               print("::error::" + b)
-          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9)" % (len(files), checked, len(bad)))
-          sys.exit(1 if bad else 0)
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9), %d cross-org secrets inherit" % (len(files), checked, len(bad), len(inherits)))
+          sys.exit(1 if bad or inherits else 0)
           PY

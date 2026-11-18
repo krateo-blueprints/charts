@@ -190,6 +190,14 @@ No release reported any of this.
      Local workflows (`./...`) move with the caller's own commit and are not checked. Actions
      (`owner/repo@ref`, such as `actions/checkout`) are out of this rule's scope (#20, decided
      2026-11-18).
+   - **Secrets cross organisations by name, never by `inherit`.** `secrets: inherit` passes nothing
+     to a reusable workflow owned by another organisation, and nothing reports it: the called
+     workflow reads each secret as empty. krateo-platformops/.github's `release-notes.yaml` then
+     skips every step and reports success, so openstack-keystone-operator-kog 0.4.1 and 0.4.2
+     shipped without notes while the org secret was set (openstack-keystone-operator-kog#33,
+     krateo-platformops/.github#57). Pass each secret the reusable declares under `secrets:` by name.
+     `pinned-uses.yaml` refuses an uncommented `secrets: inherit` on any `uses:` whose owner is not
+     the caller's; a comment that mentions it is fine, and so is `inherit` within one organisation.
    - **Releases here:** tags are plain semver with no `v` prefix (the organisation's convention), and
      each release is cut as a tag such as `1.0.0` on `main`.
    - **Pin the commit, not the tag object.** Release tags are annotated, so `git ls-remote` on
