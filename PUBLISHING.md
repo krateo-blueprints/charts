@@ -341,7 +341,7 @@ No release reported any of this.
       ```yaml
           - name: Push the chart
             id: push
-            uses: krateo-platformops/.github/.github/actions/chart-push@5f126b7d93ec5302eb9cc57a3af157550175fbaf # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@653ac1e67d761584993a774c76963514968b3650 # main 2026-11-18
             with:
               chart: dist/<name>-<version>.tgz
               repository: oci://ghcr.io/krateo-blueprints/charts
@@ -361,7 +361,7 @@ No release reported any of this.
       ```yaml
           - name: Locate the shared chart push
             id: chart-push
-            uses: krateo-platformops/.github/.github/actions/chart-push@5f126b7d93ec5302eb9cc57a3af157550175fbaf # main 2026-11-18
+            uses: krateo-platformops/.github/.github/actions/chart-push@653ac1e67d761584993a774c76963514968b3650 # main 2026-11-18
           - name: Push every chart
             env:
               CHART_PUSH: ${{ steps.chart-push.outputs.path }}
@@ -373,10 +373,11 @@ No release reported any of this.
               done
       ```
 
-      `5f126b7d93ec5302eb9cc57a3af157550175fbaf` is the merge of krateo-platformops/.github#61 on that
-      repository's main, committed 2026-11-18. #59 brought the digest-safe retry, and #61 took the last
-      `| head -n1` reads out of it. At that commit `push.sh` has sha256
-      `d3252aa28a2cbb2d36818cd8a059179ce4fc97dd0cd7f6609714a83580b10686` and `action.yml`
+      `653ac1e67d761584993a774c76963514968b3650` is the merge of krateo-platformops/.github#63 on that
+      repository's main, committed 2026-11-18. #59 brought the digest-safe retry, #61 took the last
+      `| head -n1` reads out of it, and #63 moved the read-back's credentials and Bearer token off
+      curl's command line onto its stdin. At that commit `push.sh` has sha256
+      `e291264346502fac37f1df85d7c48d8794193b489c5d3ef84c7c7f583f317b03` and `action.yml`
       `3ee0aca665b798c37da7179cd23a2b2d84f7da3990eac1a538d46e75b01bffce`. The example names a commit
       so it can be copied as is; pin the newest commit that changed the action.
     - **What it retries:** that exact error and nothing else. It waits, polling up to 10 times 3 s
