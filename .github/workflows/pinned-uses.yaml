@@ -1,0 +1,90 @@
+name: pinned-uses
+
+# Every reusable workflow a repository calls is pinned by full commit SHA with a version comment
+# (PUBLISHING.md rule 9). A caller adds this as a job of its lint, pinned the same way.
+#
+# A movable ref (`@main`, a tag such as `@1.1.0`) lets whoever moves it run code in every caller at
+# once, with whatever the caller passes or grants it. It also lets a caller's CI change behaviour
+# without a commit in the caller, so a green run can't be reproduced. On 2026-11-18, 136 reusable
+# `uses:` across 51 krateo-blueprints repositories were movable, the publisher itself @main in 12
+# (krateo-blueprints/charts#20).
+#
+# What is checked: every `uses:` in the caller's .github/workflows/*.y*ml whose target is another
+# repository's reusable workflow (`owner/repo/.github/workflows/<file>@<ref>`). It must have:
+#   - a ref of exactly 40 lowercase hex characters, a commit. A tag or branch can move. An abbreviated
+#     SHA is refused by GitHub for reusable workflows anyway.
+#   - a trailing comment naming what that commit is: `# X.Y.Z` (the tag it carries), or, for a
+#     repository that publishes no tags yet (krateo-platformops/.github), `# main YYYY-MM-DD`, the
+#     date of the main commit pinned. Without the comment nobody can tell what is pinned or
+#     whether it is stale.
+# What is not checked: local workflows (`./...`), which move with the caller's own commit;
+# `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path). Rule 9 does
+# not cover actions (charts#20, decided 2026-11-18).
+#
+# A repository with no workflow file at all fails: a check that read nothing has checked nothing.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: "directory, relative to the repository root, whose .github/workflows/ is checked (default: the root)"
+        type: string
+        required: false
+        default: "."
+
+jobs:
+  pinned-uses:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out the caller
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The directory reaches the script through env, never interpolated into it.
+      - name: Every reusable workflow is pinned by commit SHA with a version comment
+        env:
+          WORKDIR: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          cd "${WORKDIR}"
+          python3 -I - <<'PY'
+          import glob
+          import re
+          import sys
+
+          files = sorted(glob.glob(".github/workflows/*.yaml") + glob.glob(".github/workflows/*.yml"))
+          if not files:
+              print("::error::no .github/workflows/*.yaml or *.yml here, so nothing was checked")
+              sys.exit(1)
+          USES = re.compile(r"""^\s*(?:-\s+)?uses:\s*(['"]?)([^'"\s#]+)\1\s*(?:#\s*(.*?))?\s*$""")
+          SHA = re.compile(r"^[0-9a-f]{40}$")
+          COMMENT = re.compile(r"^(\d+\.\d+\.\d+|main \d{4}-\d{2}-\d{2})$")
+          bad, checked = [], 0
+          for path in files:
+              for n, line in enumerate(open(path, encoding="utf-8"), 1):
+                  m = USES.match(line)
+                  if not m:
+                      continue
+                  target, comment = m.group(2), (m.group(3) or "").strip()
+                  if target.startswith(("./", "docker://")) or "/.github/workflows/" not in target:
+                      continue
+                  checked += 1
+                  ref = target.rpartition("@")[2] if "@" in target else ""
+                  where = "%s:%d: %s" % (path, n, target)
+                  # BEGIN sha-check (test/pinned-uses/run-cases.py deletes this block to prove its cases see it)
+                  if not SHA.match(ref):
+                      bad.append("%s is pinned to %r, not a 40-hex commit SHA" % (where, ref))
+                      continue
+                  # END sha-check
+                  # BEGIN comment-check
+                  if not COMMENT.match(comment):
+                      bad.append("%s has comment %r; it needs `# X.Y.Z` or, for an untagged repository, `# main YYYY-MM-DD`" % (where, comment))
+                  # END comment-check
+          for b in bad:
+              print("::error::" + b)
+          print("%d file(s), %d reusable-workflow uses, %d not pinned (PUBLISHING.md rule 9)" % (len(files), checked, len(bad)))
+          sys.exit(1 if bad else 0)
+          PY

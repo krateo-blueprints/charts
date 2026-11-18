@@ -161,21 +161,46 @@ No release reported any of this.
    anonymously with `helm pull --repo`, the path the Marketplace uses. If either check fails, the
    release fails. Callers don't need their own check.
 
-9. **Callers pin the publisher's full commit SHA, with its version in a comment, and let Dependabot
-   upgrade it.** For example: `publish-chart.yaml@<40-character sha> # 1.0.0`. The publisher receives
-   `CHARTS_PUBLISH_TOKEN`, an org-wide write token. A movable ref, whether a branch or a tag like
-   `1`, would let whoever moves it run code with that token in every caller at once. A SHA can't
-   move.
-   - **Releases:** tags here are plain semver with no `v` prefix (the organisation's convention),
-     and each release is cut as a tag such as `1.0.0` on `main`.
+9. **Every reusable workflow a repository calls is pinned by full commit SHA, with what that commit
+   is in a comment, and Dependabot upgrades it.** For example:
+   `publish-chart.yaml@<40-character sha> # 1.1.0`. This covers the publisher, `release-preflight.yaml`
+   and `pinned-uses.yaml` here, and every other repository's reusable workflow, for example
+   krateo-platformops/.github's `lint-docs.yaml`, `release-notes.yaml`, `security.yml`, `release-oci.yaml`
+   and `component-image-build.yaml`.
+
+   A movable ref, whether a branch like `main` or a tag like `1`, lets whoever moves it run code in
+   every caller at once, with whatever the caller passes or grants. The publisher receives
+   `CHARTS_PUBLISH_TOKEN`, an org-wide write token; `release-oci.yaml` runs with `packages: write`;
+   `security.yml` runs with `security-events: write`. A movable ref also changes a caller's CI with no
+   commit in the caller, so a green run can't be reproduced. A SHA can't move. On 2026-11-18, 136
+   reusable `uses:` in 51 repositories were movable, the publisher itself `@main` in 12 (#20).
+   - **The comment:** `# X.Y.Z`, the tag that commit carries. A repository that publishes no tags yet
+     (krateo-platformops/.github, as of 2026-11-18) is pinned to a commit on its `main` with the comment
+     `# main YYYY-MM-DD`, the date of that commit, until it tags its workflows. Then callers move to
+     `# X.Y.Z`.
+   - **Enforced, not described:** every repository calls `pinned-uses.yaml` from its lint, pinned the
+     same way. It refuses any non-local `uses:` of a reusable workflow whose ref is not 40 hex
+     characters with one of those two comments:
+
+     ```yaml
+       pinned-uses:
+         uses: krateo-blueprints/charts/.github/workflows/pinned-uses.yaml@<sha> # 1.2.0
+     ```
+
+     Local workflows (`./...`) move with the caller's own commit and are not checked. Actions
+     (`owner/repo@ref`, such as `actions/checkout`) are out of this rule's scope (#20, decided
+     2026-11-18).
+   - **Releases here:** tags are plain semver with no `v` prefix (the organisation's convention), and
+     each release is cut as a tag such as `1.0.0` on `main`.
    - **Pin the commit, not the tag object.** Release tags are annotated, so `git ls-remote` on
      `refs/tags/1.0.0` and the GitHub tags page give the tag object's SHA (for `1.0.0`,
      `54acb674…`), and Actions won't run a workflow pinned to it. Take the commit with
      `git ls-remote https://github.com/krateo-blueprints/charts 'refs/tags/1.0.0^{}'`. For `1.0.0`
      that is `a2d63ba50e138b17f678528d6d6be3afef48715a`.
-   - **Upgrades:** every caller has `.github/dependabot.yml` with the `github-actions` ecosystem,
-     so a new publisher release arrives as a reviewed pull request in each repository rather than
-     silently. That is how a fix like #5 or #6 still reaches everyone.
+   - **Upgrades:** every caller has `.github/dependabot.yml` with the `github-actions` ecosystem, so a
+     new release of a tagged reusable workflow arrives as a reviewed pull request in each repository
+     rather than silently. That is how a fix like #5 or #6 still reaches everyone. A `# main
+     YYYY-MM-DD` pin has no tag for Dependabot to follow; it is moved by hand, deliberately.
 
 10. **Released commits passed lint.** The caller's release refuses a commit with no successful lint
     run. That check belongs to the caller's workflow, because only the caller knows its own lint.
