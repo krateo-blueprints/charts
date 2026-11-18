@@ -177,9 +177,12 @@ No release reported any of this.
    - **The comment:** `# X.Y.Z`, the tag that commit carries, is the preferred form, because
      Dependabot advances it. `# main YYYY-MM-DD`, the date of a commit on the publisher's `main`,
      exists only for a publisher with no tags.
-     - **Why it is transitional:** Dependabot cannot advance a dated pin. A repository on the dated
-       form is waiting on its publisher to tag, and moves to `# X.Y.Z` when it does. The dated pins are
-       then replaced, not kept as a second way to pin.
+     - **Why it is transitional:** `# main YYYY-MM-DD` is for a publisher with no tags. Dependabot cannot
+       advance such a pin, so it is transitional: a repository on this form is waiting on its publisher
+       to tag, and moves to `# X.Y.Z` when it does. The dated pins are then replaced, not kept as a second
+       way to pin. krateo-platformops/.github is tagged from `1.0.0`, so pin `# 1.0.0`.
+     - **Resolve with `^{}`:** an annotated tag is resolved with `^{}` both when pinning and when
+       reviewing a pin.
      - **Rewrite the explanation too:** a caller whose comment explains the dated form ("no tags yet")
        now holds a stale explanation. The re-pin rewrites that comment as well as the commit.
      krateo-platformops/.github published its first tag, `1.0.0`, on 2026-11-18. The annotated tag

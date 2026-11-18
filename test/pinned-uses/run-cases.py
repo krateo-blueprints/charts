@@ -294,6 +294,10 @@ CASES += [
     ("a .py naming the command", {"a.yaml": steps(ACT_USE), "hack/gate.py": 'assert "helm push" not in text\n'}, True, "0 script(s) scanned", None),
     # krateo-platformops/.github is tagged (1.0.0): a dated pin into it still passes, with a notice.
     ("dated pin into a tagged repo", {"a.yaml": steps(ACT_USE)}, True, "1 dated pin(s) into a tagged repository", None),
+    # The notice explains itself: why the dated form exists, what to pin instead, and how to resolve the tag.
+    ("dated-pin notice explains the form", {"a.yaml": steps(ACT_USE)}, True,
+     "That form is for a publisher with no tags; Dependabot cannot advance such a pin, so it is transitional, and a repository on it is waiting on its publisher to tag. krateo-platformops/.github is tagged from 1.0.0 (charts#23), so pin `# 1.0.0`", None),
+    ("dated-pin notice gives ^{}", {"a.yaml": steps(ACT_USE)}, True, "resolve the tag with `^{}`", None),
     ("tagged pin, no notice", {"a.yaml": steps("- uses: %s@%s # 1.0.0" % (ACT, SHA))}, True, "0 dated pin(s) into a tagged repository", None,
      {"absent": "dated pin into a tagged repository::"}),
 ]
