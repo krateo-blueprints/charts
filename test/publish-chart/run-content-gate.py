@@ -116,13 +116,16 @@ def main():
         print(f"  without rule 13: {channel:10} {version:24} {'accepted' if ok else 'refused'}")
     # The shapes helm cannot package: run the gate's own test expression on them.
     expr = [line.strip() for line in shell.splitlines() if "=~" in line and "$version" in line]
-    if len(expr) != 1:
-        problems.append(f"expected one `$version =~` test in the gate, found {len(expr)}")
+    # The test names the pattern by variable (PLAIN_VERSION, shared byte for byte with release-preflight.yaml), so
+    # its definition is run with it: without it the variable is empty and an empty regex matches everything.
+    defs = [line.strip() for line in shell.splitlines() if line.strip().startswith("PLAIN_VERSION=")]
+    if len(expr) != 1 or len(defs) != 1:
+        problems.append(f"expected one `$version =~` test and one PLAIN_VERSION definition in the gate, found {len(expr)} and {len(defs)}")
     else:
         # The gate's line is `if ! [[ ... ]]; then`; keep the bracket test, so exit 0 means "matches".
         test = expr[0].removeprefix("if ").split("; then")[0].strip().removeprefix("! ")
         for v in UNPACKAGEABLE:
-            r = subprocess.run(["bash", "-c", f'version="$1"; {test}', "_", v])
+            r = subprocess.run(["bash", "-c", f'{defs[0]}; version="$1"; {test}', "_", v])
             ran += 1
             if r.returncode == 0:
                 problems.append(f"the gate's version test accepts {v!r}")
