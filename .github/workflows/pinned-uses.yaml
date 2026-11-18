@@ -99,7 +99,9 @@ name: pinned-uses
 # Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
 # YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read; another product's version that
 # equals a tag of the pinned repository is compared as though it were the pin's unless the sentence or paragraph
-# names that product's repository explicitly; and a repository named only by a bare word is not attributed.
+# names that product's repository explicitly; a repository named only by a bare word is not attributed; and a
+# past-tense deictic sentence is read as history and not verified, so a false one ("This pin was moved to 1.0.2")
+# passes.
 #
 # Also checked, on the same `uses:`: no `secrets: inherit` when the reusable's owner is not the
 # caller's owner. `inherit` passes nothing to a reusable in another organisation, and nothing says so:
@@ -404,7 +406,8 @@ jobs:
           # Known limits: inline (end-of-line) comments are not read; a pin whose comment holds no version (`# main
           # YYYY-MM-DD`, `# floating: ...`) is not compared; action.yml files are not read (only .github/workflows);
           # another product's version that equals a tag of the pinned repository is compared as if it were the pin's,
-          # unless its repository is named explicitly; and a repository named only by a bare word is not attributed.
+          # unless its repository is named explicitly; a repository named only by a bare word is not attributed; and a
+          # past-tense deictic sentence is read as history and not verified (a false one passes).
           AGREE_PIN = re.compile(r"""^(\s*)(-\s+)?uses:\s*['"]?([^'"\s#@]+)@([0-9a-f]{40})['"]?\s*(?:#\s*(.*))?$""")
           AGREE_TOKEN = re.compile(r"(?<![\w.])v?(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?![\w])(?!\.[0-9])")
           AGREE_PIN_VERSION = re.compile(r"^v?([0-9]+(?:\.[0-9]+){0,2})\b")
