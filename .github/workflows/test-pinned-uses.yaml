@@ -18,9 +18,11 @@ name: test-pinned-uses
 #     the stated reason where the case names one (dropping float-form must produce the comment-format
 #     error). Every block has at least one such case. Last, it swaps inherit-check for a plain text
 #     search and requires that to refuse the mention cases, which it did to real callers.
-#     For rule 14: this repository's shared action (push-chart) pinned with `# X.Y.Z`, quoted, passes;
-#     a branch, a tag, an abbreviated SHA, an owner in another case, no comment, a dated comment, a float
-#     on a SHA and a floated branch are refused, and another organisation's action stays out of scope. A
+#     For rule 14: the shared chart-push action (krateo-platformops/.github) pinned with `# main
+#     YYYY-MM-DD` or `# X.Y.Z`, quoted, passes; `@main` (release-oci.yaml's call today), a tag, an
+#     abbreviated SHA, an owner in another case, no comment, a non-version comment, a float on a SHA and
+#     a floated branch are refused; another action of that repository, a longer name and another
+#     owner's chart-push stay out of scope. A
 #     bare `helm push` (a run line, in a loop, after `&&`, with extra spaces, among clean files, beside a
 #     good pin) and a bare `oras push` are refused; a commented one (YAML, shell, indented) is not, and
 #     `helm package`, `helm pull`, `helm cm-push` and words containing push are not pushes. The blocks

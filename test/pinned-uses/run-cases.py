@@ -8,7 +8,7 @@ runs it in a caller's checkout.
 Then the mutations. The script carries marked blocks: `sha-check`, `comment-check` and, inside it,
 `float-form` (the float as a first-class comment form), `inherit-check`, `float-accept` (which accepts a
 recorded float) and, inside it, the refusals `float-date`, `float-reason`, `float-owner`, `float-publisher`,
-`float-sha` and `float-branch`; and for rule 14, `action-scope` (this repository's shared actions are checked),
+`float-sha` and `float-branch`; and for rule 14, `action-scope` (the shared chart-push action is checked),
 `action-sha`, `action-comment`, `bare-push` and `push-comment` (a commented line is not a push). Each is deleted in turn, and the cases that block exists for must flip to the
 opposite verdict: a refused case to passing, an accepted float to refused. Where a case names the reason the
 mutant must be caught for (`mutant_text`), the mutant's output must say it. A case whose verdict a mutant
@@ -154,9 +154,9 @@ CASES += [
      "0 not pinned (PUBLISHING.md rule 9), 1 floating, 1 cross-org secrets inherit", "inherit-check"),
 ]
 
-# PUBLISHING.md rule 14: the shared action from this repository is pinned `@<sha> # X.Y.Z`, never floated, and no
-# workflow pushes a chart bare.
-ACT = "krateo-blueprints/charts/.github/actions/push-chart"
+# PUBLISHING.md rule 14: the shared chart-push action is pinned like a reusable (`# X.Y.Z`, or `# main YYYY-MM-DD` while
+# krateo-platformops/.github is untagged), never floated, and no workflow pushes a chart bare.
+ACT = "krateo-platformops/.github/.github/actions/chart-push"
 
 
 def steps(*lines):
@@ -169,28 +169,35 @@ def run_block(*body):
     return steps("- name: release", "  run: |") .replace("  run: |\n", "  run: |\n" + "".join("          %s\n" % l for l in body))
 
 
-ACT_USE = "- uses: %s@%s # 1.4.0" % (ACT, SHA)
-PUSH_ERR = "push charts through krateo-blueprints/charts/.github/actions/push-chart"
+ACT_USE = "- uses: %s@%s # main 2026-11-18" % (ACT, SHA)
+PUSH_ERR = "push charts through krateo-platformops/.github/.github/actions/chart-push"
 CASES += [
-    # the shared action is in scope, pinned like a reusable, with a charts tag
-    ("shared action pinned", {"a.yaml": steps(ACT_USE, "  with:", "    chart: dist/demo-0.1.0.tgz")}, True,
+    # the shared action is in scope, pinned like a reusable: dated while its repository is untagged, or a tag
+    ("shared action pinned, dated", {"a.yaml": steps(ACT_USE, "  with:", "    chart: dist/demo-0.1.0.tgz")}, True,
      "0 reusable-workflow uses, 0 not pinned (PUBLISHING.md rule 9), 0 floating, 0 cross-org secrets inherit, 1 shared-action uses, 0 bare chart push(es)", None),
-    ("shared action, quoted", {"a.yaml": steps('- uses: "%s@%s" # 1.4.0' % (ACT, SHA))}, True, "1 shared-action uses", None),
-    ("shared action branch ref", {"a.yaml": steps("- uses: %s@main # 1.4.0" % ACT)}, False,
-     "not a 40-hex commit SHA; a shared action from krateo-blueprints/charts", "action-sha"),
-    ("shared action tag ref", {"a.yaml": steps("- uses: %s@1.4.0 # 1.4.0" % ACT)}, False, "is pinned to '1.4.0'", "action-sha"),
-    ("shared action abbreviated sha", {"a.yaml": steps("- uses: %s@788f1a6 # 1.4.0" % ACT)}, False, "1 shared-action uses", "action-scope"),
-    ("shared action, owner case", {"a.yaml": steps("- uses: Krateo-Blueprints/Charts/.github/actions/push-chart@main # 1.4.0")}, False,
+    ("shared action pinned, tagged", {"a.yaml": steps("- uses: %s@%s # 1.0.0" % (ACT, SHA))}, True, "1 shared-action uses, 0 bare", None),
+    ("shared action, quoted", {"a.yaml": steps('- uses: "%s@%s" # main 2026-11-18' % (ACT, SHA))}, True, "1 shared-action uses", None),
+    # release-oci.yaml's call today
+    ("shared action at main", {"a.yaml": steps("- uses: %s@main" % ACT)}, False,
+     "not a 40-hex commit SHA; the shared chart-push action is always pinned by commit", "action-sha"),
+    ("shared action tag ref", {"a.yaml": steps("- uses: %s@1.0.0 # 1.0.0" % ACT)}, False, "is pinned to '1.0.0'", "action-sha"),
+    ("shared action abbreviated sha", {"a.yaml": steps("- uses: %s@f25d6b5 # main 2026-11-17" % ACT)}, False, "1 shared-action uses", "action-scope"),
+    ("shared action, owner case", {"a.yaml": steps("- uses: Krateo-Platformops/.GitHub/.github/actions/chart-push@main # main 2026-11-17")}, False,
      "1 not pinned", "action-scope"),
-    ("shared action, no comment", {"a.yaml": steps("- uses: %s@%s" % (ACT, SHA))}, False, "needs `# X.Y.Z`, the charts tag", "action-comment"),
-    ("shared action, dated comment", {"a.yaml": steps("- uses: %s@%s # main 2026-11-18" % (ACT, SHA))}, False,
-     "has comment 'main 2026-11-18'", "action-comment"),
-    ("shared action, float on a sha", {"a.yaml": steps("- uses: %s@%s # floating: 2026-11-18 follow charts" % (ACT, SHA))}, False,
-     "needs `# X.Y.Z`, the charts tag", "action-comment"),
+    ("shared action, no comment", {"a.yaml": steps("- uses: %s@%s" % (ACT, SHA))}, False, "needs `# X.Y.Z`, or `# main YYYY-MM-DD`", "action-comment"),
+    ("shared action, comment not a version", {"a.yaml": steps("- uses: %s@%s # latest" % (ACT, SHA))}, False,
+     "has comment 'latest'", "action-comment"),
+    ("shared action, float on a sha", {"a.yaml": steps("- uses: %s@%s # floating: 2026-11-18 follow main" % (ACT, SHA))}, False,
+     "and is never floated", "action-comment"),
     # Refused by both the ref and the comment, so neither deletion alone flips it.
-    ("shared action floated", {"a.yaml": steps("- uses: %s@main # floating: 2026-11-18 follow charts" % ACT)}, False,
+    ("shared action floated", {"a.yaml": steps("- uses: %s@main # floating: 2026-11-18 follow main" % ACT)}, False,
      "never floated (PUBLISHING.md rule 14)", None),
-    ("another org action, out of scope", {"a.yaml": steps("- uses: krateo-platformops/actions/.github/actions/x@main")}, True,
+    # Out of scope: another action of the same repository, a name that only starts the same, another owner's.
+    ("same repo, another action", {"a.yaml": steps("- uses: krateo-platformops/.github/.github/actions/chart-version-guard@main")}, True,
+     "0 shared-action uses", None),
+    ("a longer name, out of scope", {"a.yaml": steps("- uses: krateo-platformops/.github/.github/actions/chart-push-extra@main")}, True,
+     "0 shared-action uses", None),
+    ("another org action, out of scope", {"a.yaml": steps("- uses: krateo-blueprints/actions/.github/actions/chart-push@main")}, True,
      "0 shared-action uses", None),
     # bare pushes
     ("bare helm push, run line", {"a.yaml": steps("- run: helm push dist/demo-0.1.0.tgz oci://ghcr.io/krateo-blueprints/charts")}, False,
@@ -219,7 +226,7 @@ CASES += [
      "0 bare chart push(es)", None),
     ("helm-push as part of a word", {"a.yaml": run_block("helm cm-push dist/demo.tgz museum", "echo myhelm push-it", "echo helm pushes")}, True,
      "0 bare chart push(es)", None),
-    ("push through the action", {"a.yaml": steps("- name: Push the chart", "  id: push", "  uses: %s@%s # 1.4.0" % (ACT, SHA), "  with:", "    chart: dist/demo-0.1.0.tgz", "    repository: oci://ghcr.io/krateo-blueprints/charts")}, True,
+    ("push through the action", {"a.yaml": steps("- name: Push the chart", "  id: push", "  uses: %s@%s # main 2026-11-18" % (ACT, SHA), "  with:", "    chart: dist/demo-0.1.0.tgz", "    repository: oci://ghcr.io/krateo-blueprints/charts")}, True,
      "1 shared-action uses, 0 bare chart push(es)", None),
 ]
 

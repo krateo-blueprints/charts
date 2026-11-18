@@ -1,8 +1,8 @@
 name: pinned-uses
 
 # Every reusable workflow a repository calls is pinned by full commit SHA with a version comment
-# (PUBLISHING.md rule 9), and so is every shared action from this repository, and no chart is pushed
-# bare (rule 14). A caller adds this as a job of its lint, pinned the same way.
+# (PUBLISHING.md rule 9), and so is the shared chart-push action, and no chart is pushed bare
+# (rule 14). A caller adds this as a job of its lint, pinned the same way.
 #
 # A movable ref (`@main`, a tag such as `@1.1.0`) lets whoever moves it run code in every caller at
 # once, with whatever the caller passes or grants it. It also lets a caller's CI change behaviour
@@ -42,18 +42,17 @@ name: pinned-uses
 # where a repository chooses to; the publisher may not.)
 # What is not checked: local workflows (`./...`), which move with the caller's own commit;
 # `docker://` images; and actions (`owner/repo@ref`, no .github/workflows/ in the path), except the
-# shared actions this repository publishes (below). Rule 9 does not cover actions (charts#20, decided
-# 2026-11-18).
+# shared chart-push action (below). Rule 9 does not cover actions (charts#20, decided 2026-11-18).
 #
 # Rule 14, checked here because every caller already runs this job:
-#   - a shared action from this repository (`krateo-blueprints/charts/.github/actions/<name>@<ref>`,
-#     owner and repository in any case) is pinned to a 40-hex commit with `# X.Y.Z`, the charts tag
-#     that commit carries. charts is tagged, so the dated form does not apply, and it is never floated:
-#     push-chart receives the caller's registry write credentials.
+#   - the shared chart-push action (`krateo-platformops/.github/.github/actions/chart-push@<ref>`,
+#     owner and repository in any case) is pinned like a reusable workflow: a 40-hex commit with
+#     `# X.Y.Z` or, while krateo-platformops/.github publishes no tags, `# main YYYY-MM-DD` (charts#23).
+#     It is never floated: it receives the caller's registry write credentials.
 #   - no workflow pushes a chart bare. Every uncommented line with `helm push` or `oras push` (as a
 #     word, after the start of the line, whitespace, `;`, `&`, `|`, `(`, a backtick or a quote) is
-#     refused: charts are pushed through krateo-blueprints/charts/.github/actions/push-chart, which
-#     survives GHCR's tag read-after-write race (sha256:<digest>: not found after an accepted PUT).
+#     refused: charts are pushed through that action, which survives GHCR's tag read-after-write
+#     race (sha256:<digest>: not found after an accepted PUT).
 #     A line whose first non-blank character is `#`, a YAML or shell comment, is not a push. The check
 #     is textual and reads the workflow files only: a push inside a script the workflow runs, or
 #     through a variable (`$HELM push`), is not seen. It cannot tell an `oras push` of a chart from
@@ -122,8 +121,7 @@ jobs:
           INHERIT = re.compile(r"""^(\s*)secrets:\s*(['"]?)inherit\2\s*(?:#.*)?$""")
           # A bare chart push (rule 14): `helm push` / `oras push` as a word, not part of another word.
           PUSH = re.compile(r"""(^|[\s;&|(`'"])(helm|oras)\s+push\b""")
-          SHARED_ACTIONS = "krateo-blueprints/charts/.github/actions/"
-          VERSION = re.compile(r"^\d+\.\d+\.\d+$")
+          CHART_PUSH_ACTION = "krateo-platformops/.github/.github/actions/chart-push"
 
 
           def indent(line):
@@ -187,15 +185,15 @@ jobs:
                           and not line.lstrip().startswith("#")
                           # END push-comment
                           ):
-                      pushes.append("%s:%d: a bare `%s push`; push charts through krateo-blueprints/charts/.github/actions/push-chart@<40-hex sha> # X.Y.Z, which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, PUSH.search(line).group(2)))
+                      pushes.append("%s:%d: a bare `%s push`; push charts through %s@<40-hex sha> # main YYYY-MM-DD, which survives GHCR's tag read-after-write race (PUBLISHING.md rule 14)" % (path, n, PUSH.search(line).group(2), CHART_PUSH_ACTION))
                   # END bare-push
                   m = USES.match(line)
                   if not m:
                       continue
                   target, comment = m.group(2), (m.group(3) or "").strip()
                   is_action = False
-                  # BEGIN action-scope (a shared action from this repository is checked, though other actions are not)
-                  is_action = target.lower().startswith(SHARED_ACTIONS)
+                  # BEGIN action-scope (the shared chart-push action is checked, though other actions are not)
+                  is_action = target.split("@", 1)[0].lower() == CHART_PUSH_ACTION
                   # END action-scope
                   if target.startswith(("./", "docker://")) or ("/.github/workflows/" not in target and not is_action):
                       continue
@@ -205,12 +203,12 @@ jobs:
                       actions += 1
                       # BEGIN action-sha
                       if not SHA.match(ref):
-                          bad.append("%s is pinned to %r, not a 40-hex commit SHA; a shared action from krateo-blueprints/charts is always pinned `@<sha> # X.Y.Z` and never floated (PUBLISHING.md rule 14)" % (where, ref))
+                          bad.append("%s is pinned to %r, not a 40-hex commit SHA; the shared chart-push action is always pinned by commit and never floated (PUBLISHING.md rule 14)" % (where, ref))
                           continue
                       # END action-sha
                       # BEGIN action-comment
-                      if not VERSION.match(comment):
-                          bad.append("%s has comment %r; a shared action from krateo-blueprints/charts needs `# X.Y.Z`, the charts tag its commit carries (PUBLISHING.md rule 14)" % (where, comment))
+                      if not COMMENT.match(comment):
+                          bad.append("%s has comment %r; the shared chart-push action needs `# X.Y.Z`, or `# main YYYY-MM-DD` while krateo-platformops/.github is untagged, and is never floated (PUBLISHING.md rule 14)" % (where, comment))
                       # END action-comment
                       continue
                   checked += 1
