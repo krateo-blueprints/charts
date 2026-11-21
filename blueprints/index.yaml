@@ -53681,6 +53681,38 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "26.0"
+    created: "2026-11-21T11:42:03.328685239Z"
+    description: Krateo Operator Generator (KOG) packaging that exposes Keycloak Admin
+      API resources (realm, client, protocol-mapper, client-scope, group, identity-provider)
+      as native Kubernetes custom resources. oasgen-provider + rest-dynamic-controller
+      reconcile each CR against a running Keycloak's Admin REST API. The bearer admin
+      token is delivered/rotated into a Secret by the External Secrets Operator.
+    digest: 62dc1dd574aa69663ed0d45d4270c8c8d6d4577f9cb55815bacb570af9e8925c
+    home: https://www.keycloak.org/
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - security
+    - keycloak
+    - identity
+    - kog
+    maintainers:
+    - name: krateo
+    name: keycloak-config-kog
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keycloak-config-kog-0.12.0/keycloak-config-kog-0.12.0.tgz
+    version: 0.12.0
+  - annotations:
+      krateo.io/category: security
+      krateo.io/display-name: Keycloak Config KOG
+      krateo.io/maturity: beta
+      krateo.io/requires-oasgen-provider: '>= 0.78.0'
+      krateo.io/requires-oasgen-provider-crd: '>= 0.78.0'
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "26.0"
     created: "2026-11-18T06:57:10.105900808Z"
     description: Krateo Operator Generator (KOG) packaging that exposes Keycloak Admin
       API resources (realm, client, protocol-mapper, client-scope, group, identity-provider)
@@ -81970,4 +82002,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-21T07:15:17.575018635Z"
+generated: "2026-11-21T11:42:03.326695391Z"
