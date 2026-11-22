@@ -1,0 +1,29 @@
+name: index-gate
+description: >-
+  The krateo-blueprints index's content gate (PUBLISHING.md rules 1, 2, 3 and 13) as one definition. With no inputs
+  it outputs gate.sh's path; run it as  CHANNEL=<channel> SRC=<owner>/<repo> bash "$path" <dir of .tgz>.
+  publish-chart runs it at index time, and krateo-platformops/.github release-oci runs it before anything is pushed,
+  so a chart the index would refuse is refused before it reaches the registry, by the same rules.
+
+# Locate mode only: the gate needs the caller's packages and channel, and runs as the caller's own step, so a
+# refusal names the chart in the caller's log. A caller pins it by full commit SHA with its version comment
+# (PUBLISHING.md rule 9), as for a reusable workflow:
+#
+#   - name: Index gate
+#     id: gate
+#     uses: krateo-blueprints/charts/.github/actions/index-gate@<40-hex sha> # X.Y.Z
+#   - run: CHANNEL=blueprints SRC=${{ github.repository }} bash "${{ steps.gate.outputs.path }}" dist
+#
+# Needs on the runner: bash, GNU tar (--wildcards), yq (mikefarah), grep.
+
+outputs:
+  path:
+    description: Absolute path of gate.sh.
+    value: ${{ steps.locate.outputs.path }}
+
+runs:
+  using: composite
+  steps:
+    - id: locate
+      shell: bash
+      run: echo "path=${GITHUB_ACTION_PATH}/gate.sh" >> "$GITHUB_OUTPUT"
