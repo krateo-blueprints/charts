@@ -6,7 +6,7 @@ generated repository trees:
   - a repository that conforms passes;
   - each case breaks exactly one rule and must fail with that rule's id, and only that one;
   - a Chart.yaml under a test fixture or a vendored subchart (chart/charts/<x>/) is not a chart of the
-    repository, so it must not trip R2;
+    repository, so it must not trip R2; a top-level charts/<name>/ IS one, in the wrong place, and must;
   - then every marked rule block (`# [rule:Rn]` ... `# [/rule:Rn]`) is deleted in turn, and each case
     that block exists for must flip to passing. Every rule has at least one case.
 Exit 0 only if every expectation holds.
@@ -96,6 +96,8 @@ CASES = [
     ("R2 chart under helm/<name>/ instead of chart/", "R2", NAME, lambda r: (
         rm(r, "config-chart"), move(r, "chart", f"helm/{NAME}"))),
     ("R2 a third chart directory", "R2", NAME, lambda r: write(r, "extra/Chart.yaml", chart("extra"))),
+    # A top-level charts/<name>/ is not a vendored subchart (nothing above it is a chart).
+    ("R2 a top-level charts/<name>/ directory", "R2", NAME, lambda r: write(r, f"charts/{NAME}-helper/Chart.yaml", chart(f"{NAME}-helper"))),
     ("R3 chart not named after the repository", "R3", NAME, lambda r: write(r, "chart/Chart.yaml", chart("acme"))),
     ("R3 config chart not <repo>-config", "R3", NAME, lambda r: write(r, "config-chart/Chart.yaml", chart("acme-config"))),
     ("R4 hand-written version", "R4", NAME, lambda r: write(
@@ -121,6 +123,7 @@ PASSES = [
     ("conforms without a config chart", NAME, lambda r: rm(r, "config-chart")),
     ("a test fixture's Chart.yaml is not a chart", NAME, lambda r: write(r, "test/fixtures/x/Chart.yaml", chart("x"))),
     ("a vendored subchart is not a chart", NAME, lambda r: write(r, "chart/charts/dep/Chart.yaml", chart("dep"))),
+    ("a vendored subchart of the config chart is not a chart", NAME, lambda r: write(r, "config-chart/charts/dep/Chart.yaml", chart("dep"))),
 ]
 
 

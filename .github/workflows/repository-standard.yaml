@@ -57,14 +57,22 @@ jobs:
               m = re.search(rf"^{key}:\s*['\"]?([^'\"\s#]+)", text or "", re.M)
               return m.group(1) if m else None
 
-          # Every Chart.yaml that is a chart of this repository: not a vendored subchart (charts/<x>/)
-          # and not a test or example fixture.
+          # Every Chart.yaml that is a chart of this repository: not a test or example fixture, and not a
+          # vendored subchart, which is a charts/<x>/ INSIDE a chart (its parent holds a Chart.yaml). A
+          # top-level charts/<name>/ is a chart of the repository in the wrong place, and R2 reports it.
           FIXTURE = re.compile(r"(^|/)(test|tests|testdata|fixtures|e2e|examples?|samples?)(/|$)")
+
+          def vendored(rel):
+              parts = rel.split("/")
+              return any(parts[i] == "charts" and i > 0
+                         and os.path.isfile(os.path.join(ROOT, *parts[:i], "Chart.yaml"))
+                         for i in range(len(parts)))
+
           charts = []
           for dp, dns, fns in os.walk(ROOT):
               dns[:] = [d for d in dns if d != ".git"]
               rel = os.path.relpath(dp, ROOT)
-              if "Chart.yaml" in fns and not FIXTURE.search(rel) and "/charts/" not in f"/{rel}/":
+              if "Chart.yaml" in fns and not FIXTURE.search(rel) and not vendored(rel):
                   charts.append("." if rel == "." else rel)
 
           workflows = {}
