@@ -4,7 +4,8 @@
 Runs the workflow's OWN check (the `python3 -I - <<'PY'` heredoc, extracted from the file) against
 generated repository trees:
   - a repository that conforms passes;
-  - each case breaks exactly one rule and must fail with that rule's id, and only that one;
+  - each case breaks exactly one rule and must fail with that rule's id, and only that one; a case for an
+    advisory rule (REPOSITORY.md: R5, R8's reference check) must pass and warn with that rule's id;
   - a Chart.yaml under a test fixture or a vendored subchart (chart/charts/<x>/) is not a chart of the
     repository, so it must not trip R2; a top-level charts/<name>/ IS one, in the wrong place, and must;
   - then every marked rule block (`# [rule:Rn]` ... `# [/rule:Rn]`) is deleted in turn, and each case
@@ -114,8 +115,11 @@ CASES = [
     ("R7 docs bundle missing one page", "R7", NAME, lambda r: rm(r, "docs/api.md")),
     ("R8 no pinned-uses", "R8", NAME, lambda r: write(
         r, ".github/workflows/lint.yaml", workflow([u for u in USES["lint"] if "pinned-uses" not in u]))),
-    ("R8 no preflight-refs", "R8", NAME, lambda r: rm(r, "hack/preflight-refs.py")),
+    ("R8 no preflight-refs workflow", "R8", NAME, lambda r: rm(r, ".github/workflows/preflight-refs.yaml")),
 ]
+
+# Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
+ADVISORY = {"R5 no shared release-oci", "R5 a repository-specific release-tag.yaml", "R8 no preflight-refs workflow"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
 PASSES = [
@@ -140,7 +144,11 @@ def run(check, name, mutate):
 
 
 def rules_in(out):
-    return sorted(set(re.findall(r"^\s+(R\d+):", out, re.M)))
+    return sorted(set(re.findall(r"^\s+(R\d+):(?!.*\(advisory\)$)", out, re.M)))
+
+
+def warned_in(out):
+    return sorted(set(re.findall(r"^\s+(R\d+):.*\(advisory\)$", out, re.M)))
 
 
 def main():
@@ -154,9 +162,14 @@ def main():
             bad.append(label); print(textwrap.indent(out, "      "))
     for label, rule, name, mutate in CASES:
         rc, out = run(check, name, mutate)
-        got = rules_in(out)
-        ok = rc == 1 and got == [rule]
-        print(f"{'ok  ' if ok else 'FAIL'} refuses: {label} -> {got}")
+        if label in ADVISORY:
+            got = warned_in(out)
+            ok = rc == 0 and got == [rule] and rules_in(out) == []
+            print(f"{'ok  ' if ok else 'FAIL'} warns:   {label} -> {got}")
+        else:
+            got = rules_in(out)
+            ok = rc == 1 and got == [rule] and warned_in(out) == []
+            print(f"{'ok  ' if ok else 'FAIL'} refuses: {label} -> {got}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
     # Each rule block, deleted, must let every case written for it pass.
@@ -170,8 +183,9 @@ def main():
             bad.append(f"rule {rule} has no case"); print(f"FAIL rule {rule} has no case"); continue
         for label, _, name, mutate in mine:
             rc, out = run(cut, name, mutate)
-            ok = rc == 0
-            print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' passes")
+            # Without the block the case passes silently: no failure and, for an advisory rule, no warning.
+            ok = rc == 0 and rule not in warned_in(out) and rule not in rules_in(out)
+            print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' passes silently")
             if not ok:
                 bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
     if bad:
