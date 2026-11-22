@@ -34,7 +34,12 @@ A renamed repository keeps GitHub's redirect from the old name.
 `config-chart/`. There is no other chart.** Not charts of the repository, and never published: anything
 under a `test/`, `tests/`, `testdata/`, `fixtures/`, `e2e/`, `examples/`, `example/`, `samples/` or
 `sample/` directory (a probe chart that must never ship lives there), and a vendored subchart, which is a
-`charts/<x>/` inside a chart. A top-level `charts/<name>/` is a chart in the wrong place. A repository that
+`charts/<x>/` inside a chart. A top-level `charts/<name>/` is a chart in the wrong place. **A chart that must never ship (a probe, a test fixture) lives only under one of
+those directory names**: krateo-platformops/.github release-oci prunes exactly them from discovery
+(and `chart_root` itself is never pruned, only what is below it). For the blueprints and pages index
+channels the index gate refuses such a chart independently (no CompositionDefinition computes as
+`operators`), but for **`operators`** a chart without one is exactly what qualifies, so there the
+directory name is the only thing between a fixture and the registry and the index. A repository that
 needs several independent charts is a blueprint, not a provider; how a chart is versioned is a separate
 question (R4).
 
