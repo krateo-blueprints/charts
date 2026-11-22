@@ -9,6 +9,14 @@ name: test-publish-chart
 #     each must now be accepted, which proves the cases are refused by rule 13 and not by some other
 #     check that happens to fail on the same archive.
 #
+#   - ownership-guard: runs the ownership guard's own shell (rule 6) against a fake channel index and
+#     an archive packaged here, with a stub `gh` that resolves repository names as GitHub does (a
+#     renamed repository answers at its old name with its new one): an unowned name, the publisher's
+#     own name, its former name and the organisation's former prefix pass; another repository's name
+#     and an owner that cannot be resolved are refused. Replacing canon() with a lowercase-only version
+#     must make the renamed case refused, and canon() must be byte-identical in the ownership and
+#     blob-store guards.
+#
 # The gate needs GNU tar (--wildcards) and mikefarah yq, as on the runner, so this is not run on a
 # laptop.
 
@@ -50,3 +58,14 @@ jobs:
           python3 -m venv /tmp/venv
           /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
           /tmp/venv/bin/python test/publish-chart/run-content-gate.py
+
+  ownership-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: A renamed repository keeps its names; another repository does not
+        run: python3 -I test/publish-chart/run-ownership-guard.py
