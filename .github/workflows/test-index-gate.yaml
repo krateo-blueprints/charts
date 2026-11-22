@@ -1,0 +1,40 @@
+name: test-index-gate
+
+# Self-test for the index-gate action (.github/actions/index-gate): its gate.sh is publish-chart.yaml's
+# "Content gate" step byte for byte, but for the directory parameter, while publish-chart still carries the step
+# inline (test/index-gate/run-identity.py). The step's behaviour is tested by test-publish-chart.yaml's
+# content-gate job, so identity carries that coverage to gate.sh.
+
+on:
+  pull_request:
+    paths:
+      - .github/actions/index-gate/**
+      - .github/workflows/publish-chart.yaml
+      - .github/workflows/test-index-gate.yaml
+      - test/index-gate/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/actions/index-gate/**
+      - .github/workflows/publish-chart.yaml
+      - .github/workflows/test-index-gate.yaml
+      - test/index-gate/**
+
+permissions:
+  contents: read
+
+jobs:
+  identity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: gate.sh is publish-chart's content gate
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          /tmp/venv/bin/python -I test/index-gate/run-identity.py .
