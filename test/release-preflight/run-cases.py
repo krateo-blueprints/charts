@@ -112,10 +112,10 @@ def main():
             print("%s  mutant %-44s %s" % ("ok  " if good else "FAIL", label,
                                           "caught by %s" % ", ".join(caught) if good else "NOT CAUGHT by any case"))
         # One definition: the pattern publish-chart.yaml refuses at index time is this one, byte for byte.
-        pub = PATTERN.findall(open(".github/workflows/publish-chart.yaml").read())
+        pub = PATTERN.findall(open(".github/actions/index-gate/gate.sh").read())
         same = len(pub) == 1 and pub[0] == m[0]
         failures += not same
-        print("%s  pattern identical to publish-chart.yaml's (%s)" % ("ok  " if same else "FAIL", pub if not same else m[0]))
+        print("%s  pattern identical to the index gate's, gate.sh (%s)" % ("ok  " if same else "FAIL", pub if not same else m[0]))
     os.unlink(path)
     print("%d case(s), %d rule-13 case(s), %d failure(s)" % (len(CASES), len(RULE13), failures))
     return 1 if failures else 0

@@ -20,6 +20,7 @@ on:
       - .github/workflows/release-preflight.yaml
       # The rule-13 pattern must stay byte-identical to publish-chart's; a change there re-runs the comparison.
       - .github/workflows/publish-chart.yaml
+      - .github/actions/index-gate/**
       - .github/workflows/test-release-preflight.yaml
       - test/release-preflight/**
   push:
@@ -29,6 +30,7 @@ on:
       - .github/workflows/release-preflight.yaml
       # The rule-13 pattern must stay byte-identical to publish-chart's; a change there re-runs the comparison.
       - .github/workflows/publish-chart.yaml
+      - .github/actions/index-gate/**
       - .github/workflows/test-release-preflight.yaml
       - test/release-preflight/**
 

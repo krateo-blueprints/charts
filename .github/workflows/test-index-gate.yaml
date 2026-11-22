@@ -1,9 +1,8 @@
 name: test-index-gate
 
-# Self-test for the index-gate action (.github/actions/index-gate): its gate.sh is publish-chart.yaml's
-# "Content gate" step byte for byte, but for the directory parameter, while publish-chart still carries the step
-# inline (test/index-gate/run-identity.py). The step's behaviour is tested by test-publish-chart.yaml's
-# content-gate job, so identity carries that coverage to gate.sh.
+# Self-test for the index-gate action (.github/actions/index-gate): publish-chart.yaml pins it by commit, and
+# that commit's gate.sh must be this commit's (test/index-gate/run-identity.py), so the gate the index runs is
+# the gate test-publish-chart.yaml's content-gate job tests. Needs the full history, hence fetch-depth 0.
 
 on:
   pull_request:
@@ -32,7 +31,8 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: gate.sh is publish-chart's content gate
+          fetch-depth: 0
+      - name: publish-chart's pinned gate.sh is this commit's
         run: |
           set -euo pipefail
           python3 -m venv /tmp/venv

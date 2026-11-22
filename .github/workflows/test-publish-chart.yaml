@@ -24,6 +24,7 @@ on:
   pull_request:
     paths:
       - .github/workflows/publish-chart.yaml
+      - .github/actions/index-gate/**
       - .github/workflows/test-publish-chart.yaml
       - test/publish-chart/**
   push:
@@ -31,6 +32,7 @@ on:
       - main
     paths:
       - .github/workflows/publish-chart.yaml
+      - .github/actions/index-gate/**
       - .github/workflows/test-publish-chart.yaml
       - test/publish-chart/**
 
