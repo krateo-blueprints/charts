@@ -40,7 +40,11 @@ question (R4).
 
 **R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`.** The published
 name then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
-`github-provider-kog/chart/`.
+`github-provider-kog/chart/`. Both charts' `home` and `sources` name the repository
+(`https://github.com/krateo-blueprints/<repo>`): publish-chart refuses a chart whose `sources` does not
+list its publishing repository, and compares a string, so a GitHub redirect does not satisfy it. **A
+repository rename (R1) therefore updates `home` and `sources` in the same change**, and is never a GitHub
+setting alone.
 
 **R4. Versions follow [PUBLISHING.md rule 4](PUBLISHING.md); for a provider that is the default shape.**
 Rule 4 is the one definition of how a chart is versioned, and this file does not restate it. A provider

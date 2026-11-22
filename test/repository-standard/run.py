@@ -51,8 +51,16 @@ def write(root, rel, content=""):
         f.write(content)
 
 
-def chart(name):
-    return f"apiVersion: v2\nname: {name}\nversion: CHART_VERSION\nappVersion: CHART_VERSION\n"
+def chart(name, repo=None):
+    repo = repo or REPO_OF.get(name, NAME)
+    url = f"https://github.com/krateo-blueprints/{repo}"
+    return (f"apiVersion: v2\nname: {name}\nversion: CHART_VERSION\nappVersion: CHART_VERSION\n"
+            f"home: {url}\nsources:\n  - {url}\n")
+
+
+# A chart's repository, for charts the cases name after a different repository.
+REPO_OF = {"krateo-acme-provider-kog": "krateo-acme-provider-kog", "krateo-acme-provider-kog-config": "krateo-acme-provider-kog",
+           "acme-kog": "acme-kog", "acme-kog-config": "acme-kog"}
 
 
 def workflow(paths):
@@ -101,10 +109,14 @@ CASES = [
     ("R2 a top-level charts/<name>/ directory", "R2", NAME, lambda r: write(r, f"charts/{NAME}-helper/Chart.yaml", chart(f"{NAME}-helper"))),
     ("R3 chart not named after the repository", "R3", NAME, lambda r: write(r, "chart/Chart.yaml", chart("acme"))),
     ("R3 config chart not <repo>-config", "R3", NAME, lambda r: write(r, "config-chart/Chart.yaml", chart("acme-config"))),
+    ("R3 sources still name the repository's former name", "R3", NAME, lambda r: write(
+        r, "chart/Chart.yaml", chart(NAME).replace(f"  - https://github.com/krateo-blueprints/{NAME}", "  - https://github.com/krateo-blueprints/krateo-acme-kog"))),
+    ("R3 home names another repository", "R3", NAME, lambda r: write(
+        r, "config-chart/Chart.yaml", chart(NAME + "-config").replace(f"home: https://github.com/krateo-blueprints/{NAME}", "home: https://github.com/krateo-blueprints/elsewhere"))),
     ("R4 hand-written version", "R4", NAME, lambda r: write(
-        r, "chart/Chart.yaml", f"apiVersion: v2\nname: {NAME}\nversion: 0.1.0\nappVersion: CHART_VERSION\n")),
+        r, "chart/Chart.yaml", chart(NAME).replace("version: CHART_VERSION\napp", "version: 0.1.0\napp"))),
     ("R4 hand-written appVersion on the config chart", "R4", NAME, lambda r: write(
-        r, "config-chart/Chart.yaml", f"apiVersion: v2\nname: {NAME}-config\nversion: CHART_VERSION\nappVersion: 0.1.0\n")),
+        r, "config-chart/Chart.yaml", chart(NAME + "-config").replace("appVersion: CHART_VERSION", "appVersion: 0.1.0"))),
     ("R5 no shared release-oci", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-oci.yaml", workflow([u for u in USES["release"] if "release-oci" not in u]))),
     ("R5 a repository-specific release-tag.yaml", "R5", NAME, lambda r: write(

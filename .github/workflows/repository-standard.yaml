@@ -112,11 +112,23 @@ jobs:
 
           # [rule:R3]
           # R3 chart names: chart/ is named after the repository, config-chart/ after it plus -config.
+          # And `home` and `sources` name the repository: publish-chart refuses a chart whose sources
+          # do not list its publishing repository (a string, so a GitHub redirect does not satisfy it),
+          # and a rename that updates neither drifts silently until release day.
+          url = f"https://github.com/krateo-blueprints/{NAME}"
           for d, want in (("chart", NAME), ("config-chart", NAME + "-config")):
               if d in charts:
-                  got = field(read(f"{d}/Chart.yaml"), "name")
+                  text = read(f"{d}/Chart.yaml")
+                  got = field(text, "name")
                   if got != want:
                       fail("R3", f"{d}/Chart.yaml name is '{got}', must be '{want}'")
+                  home = (field(text, "home") or "").rstrip("/").lower()
+                  if home != url.lower():
+                      fail("R3", f"{d}/Chart.yaml home is '{field(text, 'home')}', must be {url}")
+                  m = re.search(r"^sources:\s*\n((?:[ \t]+-.*\n?)+)", text or "", re.M)
+                  srcs = [x.strip().strip("'\"").rstrip("/").lower() for x in re.findall(r"^[ \t]+-\s*(\S+)", m.group(1), re.M)] if m else []
+                  if url.lower() not in srcs:
+                      fail("R3", f"{d}/Chart.yaml sources does not list {url}")
           # [/rule:R3]
 
           # [rule:R4]
