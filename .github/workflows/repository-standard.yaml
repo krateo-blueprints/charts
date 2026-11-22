@@ -42,9 +42,14 @@ jobs:
           ROOT = os.environ["ROOT"]
           NAME = os.environ["REPO_NAME"]
           errors = []
+          warnings = []
 
           def fail(rule, msg):
               errors.append(f"{rule}: {msg}")
+
+          # An advisory rule reports, and does not fail, until what it depends on exists (REPOSITORY.md).
+          def warn(rule, msg):
+              warnings.append(f"{rule}: {msg} (advisory)")
 
           def read(rel):
               try:
@@ -128,13 +133,14 @@ jobs:
           # [rule:R5]
           # R5 release: on a X.Y.Z tag, the shared release-preflight, release-oci and publish-chart, and
           # no repository-specific release-tag workflow.
+          # Advisory until release-oci has a default-safe dry_run and preflight strictly before any push.
           for path in ("krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
                        "krateo-platformops/.github/.github/workflows/release-oci.yaml",
                        "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"):
               if not calls(path):
-                  fail("R5", f"no workflow calls {path}")
+                  warn("R5", f"no workflow calls {path}")
           if "release-tag.yaml" in workflows:
-              fail("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
+              warn("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
           # [/rule:R5]
 
           # [rule:R6]
@@ -165,10 +171,13 @@ jobs:
                        "krateo-platformops/.github/.github/workflows/release-notes.yaml"):
               if not calls(path):
                   fail("R8", f"no workflow calls {path}")
-          if read("hack/preflight-refs.py") is None or "preflight-refs.yaml" not in workflows:
-              fail("R8", "missing hack/preflight-refs.py run by .github/workflows/preflight-refs.yaml")
+          # Advisory until the live reference check is a shared reusable in krateo-blueprints/charts.
+          if "preflight-refs.yaml" not in workflows:
+              warn("R8", "missing the live reference check, .github/workflows/preflight-refs.yaml")
           # [/rule:R8]
 
+          for w in warnings:
+              print(f"  {w}")
           if errors:
               print(f"{NAME}: {len(errors)} deviation(s) from the repository standard (REPOSITORY.md):")
               for e in errors:

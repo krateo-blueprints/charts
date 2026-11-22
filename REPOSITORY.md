@@ -31,20 +31,31 @@ REST API is `<vendor>-operator-kog`. There is no `krateo-` prefix: the organisat
 A renamed repository keeps GitHub's redirect from the old name.
 
 **R2. The chart is at `chart/`. A per-account configuration chart, when there is one, is at
-`config-chart/`. There is no other chart.** A test fixture or a vendored subchart (`chart/charts/<x>/`) is
-not a chart of the repository. A repository that needs several independent charts is a blueprint, not a
-provider.
+`config-chart/`. There is no other chart.** Not charts of the repository, and never published: anything
+under a `test/`, `tests/`, `testdata/`, `fixtures/`, `e2e/`, `examples/`, `example/`, `samples/` or
+`sample/` directory (a probe chart that must never ship lives there), and a vendored subchart, which is a
+`charts/<x>/` inside a chart. A top-level `charts/<name>/` is a chart in the wrong place. A repository that
+needs several independent charts is a blueprint, not a provider; how a chart is versioned is a separate
+question (R4).
 
 **R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`.** The published
 name then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
 `github-provider-kog/chart/`.
 
-**R4. `version` and `appVersion` are the `CHART_VERSION` placeholder, stamped from the release tag.** A
-provider ships no image (oasgen-provider spawns the controller), so there is no separate application
-version to report, and a hand-maintained one drifts: one was found at `0.1.9` while the repository
-released `0.15.0`.
+**R4. Versions follow [PUBLISHING.md rule 4](PUBLISHING.md); for a provider that is the default shape.**
+Rule 4 is the one definition of how a chart is versioned, and this file does not restate it. A provider
+chart (no CompositionDefinition) versions with its repository, so `version` and `appVersion` are both the
+`CHART_VERSION` placeholder, stamped from the release tag. A provider ships no image (oasgen-provider
+spawns the controller), so there is no separate application version to report, and a hand-maintained one
+drifts: one was found at `0.1.9` while the repository released `0.15.0`. **Every step that stamps the
+placeholder substitutes it globally**: a substitution anchored to `version:` silently leaves `appVersion`
+as the literal placeholder, and helm accepts that without a word. Charts whose version is a served API
+version (rule 4's second shape) keep literal versions; they belong to blueprint repositories.
 
-**R5. A release is the shared one.** On a `X.Y.Z` tag the repository calls PUBLISHING.md's
+**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci.yaml`
+gains a default-safe `dry_run`, runs the preflight strictly before any push, and documents a top-level
+release-notes caller*; the check reports it as a warning until then, and a repository keeps its own
+release until that version exists.** On a `X.Y.Z` tag the repository calls PUBLISHING.md's
 `release-preflight.yaml` (rule 12), krateo-platformops/.github's `release-oci.yaml`, and `publish-chart.yaml`
 (rule 1), in that order. There is no repository-specific `release-tag.yaml`: a fix to the shared release
 reaches every repository at once, and only if no repository has its own.
@@ -56,8 +67,9 @@ reaches every repository at once, and only if no repository has its own.
 `api.md`, `examples.md`, `log.md`, `release.md` and `llms.txt`.
 
 **R8. The shared checks run**: `pinned-uses.yaml` (PUBLISHING.md rule 9), krateo-platformops/.github's
-`lint-docs.yaml`, `security.yml` and `release-notes.yaml`, and the repository's own live reference check,
-`hack/preflight-refs.py`, run by `.github/workflows/preflight-refs.yaml`.
+`lint-docs.yaml`, `security.yml` and `release-notes.yaml`, and a live reference check run by
+`.github/workflows/preflight-refs.yaml`. *The reference check is advisory until it is a shared reusable
+here*: one copy per repository would drift, so the check warns about it and does not fail.
 
 ## Checking a repository
 
