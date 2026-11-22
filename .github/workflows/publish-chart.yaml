@@ -205,7 +205,8 @@ jobs:
       # One owner per chart name (rule 6), decided before anything is written. The owner is, in
       # order: the entry's source-repo annotation; the repository recorded in this repo's release
       # notes for that version; the repository whose release the entry's URL points at; the first
-      # organisation repository in the entry's `sources`. 37 names from the 2026 backfill resolve to
+      # organisation repository in the entry's `sources`. The owner found is compared by its current
+      # name (canon below), so a renamed repository keeps its names. 37 names from the 2026 backfill resolve to
       # none of these: the first repository to publish one after the standard claims it, and the
       # store's release notes record the claim, so it resolves from then on. braghettos/ is the
       # organisation's former name.
@@ -214,8 +215,23 @@ jobs:
           set -euo pipefail
           IDX="gh-pages/${CHANNEL}/index.yaml"
           [ -f "$IDX" ] || exit 0
-          norm() { tr '[:upper:]' '[:lower:]' | sed 's#^braghettos/#krateo-blueprints/#'; }
-          me="$(norm <<< "$SRC")"
+          # [canon] A recorded owner is compared by its CURRENT name: a repository renamed on GitHub
+          # still answers at its old name with its new full_name, so its own next version is not
+          # refused as another repository's. A lookup that fails keeps the recorded name, so an owner
+          # that cannot be resolved still refuses everyone else (fail closed). Byte-identical in both
+          # guards (test-publish-chart checks it).
+          canon() {
+            local r c
+            r="$(tr '[:upper:]' '[:lower:]' <<< "$1" | sed 's#^braghettos/#krateo-blueprints/#')"
+            [ -n "$r" ] || return 0
+            if c="$(gh api "repos/${r}" --jq .full_name 2>/dev/null)" && [ -n "$c" ]; then
+              tr '[:upper:]' '[:lower:]' <<< "$c"
+            else
+              echo "$r"
+            fi
+          }
+          # [/canon]
+          me="$(canon "$SRC")"
           fail=0
           for tgz in dist/*.tgz; do
             name="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml' | yq -r '.name')"
@@ -234,7 +250,7 @@ jobs:
             if [ -z "$own" ]; then
               own="$(yq -r ".entries.\"${name}\"[0].sources // [] | .[]" "$IDX" | sed -n 's#^https://github.com/\(krateo-blueprints\|braghettos\)/\([^/]*\).*#\1/\2#p' | head -n1)"
             fi
-            own="$(norm <<< "$own")"
+            own="$(canon "$own")"
             if [ -n "$own" ] && [ "$own" != "$me" ]; then
               echo "::error::${CHANNEL}/${name} is owned by ${own}; refusing ${SRC}'s version"
               fail=1
@@ -265,11 +281,28 @@ jobs:
           TAG: ${{ inputs.git_tag }}
         run: |
           set -euo pipefail
+          # [canon] A recorded owner is compared by its CURRENT name: a repository renamed on GitHub
+          # still answers at its old name with its new full_name, so its own next version is not
+          # refused as another repository's. A lookup that fails keeps the recorded name, so an owner
+          # that cannot be resolved still refuses everyone else (fail closed). Byte-identical in both
+          # guards (test-publish-chart checks it).
+          canon() {
+            local r c
+            r="$(tr '[:upper:]' '[:lower:]' <<< "$1" | sed 's#^braghettos/#krateo-blueprints/#')"
+            [ -n "$r" ] || return 0
+            if c="$(gh api "repos/${r}" --jq .full_name 2>/dev/null)" && [ -n "$c" ]; then
+              tr '[:upper:]' '[:lower:]' <<< "$c"
+            else
+              echo "$r"
+            fi
+          }
+          # [/canon]
+          me="$(canon "$SRC")"
           for tgz in dist/*.tgz; do
             base="$(basename "$tgz" .tgz)"
             if notes="$(gh release view "$base" --repo "$STORE" --json body --jq .body 2>/dev/null)"; then
               owner="$(sed -n 's/^from \([^@]*\)@.*/\1/p' <<< "$notes" | head -n1)"
-              if [ -n "$owner" ] && [ "$(tr '[:upper:]' '[:lower:]' <<< "$owner")" != "$(tr '[:upper:]' '[:lower:]' <<< "$SRC")" ]; then
+              if [ -n "$owner" ] && [ "$(canon "$owner")" != "$me" ]; then
                 echo "::error::${base} is already stored here by ${owner}; refusing to overwrite it from ${SRC}"
                 exit 1
               fi
