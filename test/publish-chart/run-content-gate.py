@@ -2,7 +2,7 @@
 """Run publish-chart.yaml's content gate against archives packaged here, and prove rule 13 is what
 refuses a pre-release.
 
-The gate's shell is read out of publish-chart.yaml (the step whose name starts "Content gate"), so
+The gate's shell is the index-gate action's gate.sh, which publish-chart.yaml's "Content gate" step runs, so
 this tests the bytes callers run. Each case packages one chart with `helm package --version V`
 into dist/ and runs that shell with the caller's SRC and CHANNEL, as the publisher does.
 
@@ -22,6 +22,7 @@ import yaml
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 WORKFLOW = os.path.join(ROOT, ".github", "workflows", "publish-chart.yaml")
+GATE = os.path.join(ROOT, ".github", "actions", "index-gate", "gate.sh")
 SRC = "krateo-blueprints/example-repo"
 BEGIN, END = "# BEGIN rule-13", "# END rule-13"
 RULE13 = "pre-releases are never indexed"
@@ -43,12 +44,13 @@ UNPACKAGEABLE = ["v1.0.0", "01.0.0", "1.00.0"]
 
 
 def gate_shell():
+    # The gate publish-chart runs: its Content gate step must call the shared gate.sh, which is read here.
     doc = yaml.safe_load(open(WORKFLOW))
     steps = doc["jobs"]["publish"]["steps"]
     found = [s["run"] for s in steps if str(s.get("name", "")).startswith("Content gate")]
-    if len(found) != 1:
-        sys.exit(f"FAIL: expected one 'Content gate' step in {WORKFLOW}, found {len(found)}")
-    return found[0]
+    if len(found) != 1 or "steps.gate.outputs.path" not in found[0]:
+        sys.exit(f"FAIL: publish-chart.yaml's Content gate step does not run the index-gate action's gate.sh")
+    return open(GATE).read()
 
 
 def without_rule13(shell):
@@ -88,7 +90,7 @@ def run(shell, channel, version, blueprint):
     with tempfile.TemporaryDirectory() as tmp:
         package(tmp, version, blueprint)
         env = dict(os.environ, SRC=SRC, CHANNEL=channel)
-        r = subprocess.run(["bash", "-c", shell], cwd=tmp, env=env, capture_output=True, text=True)
+        r = subprocess.run(["bash", "-c", shell, "gate.sh", "dist"], cwd=tmp, env=env, capture_output=True, text=True)
         return r.returncode == 0, r.stdout + r.stderr
 
 
