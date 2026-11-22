@@ -56,10 +56,12 @@ placeholder substitutes it globally**: a substitution anchored to `version:` sil
 as the literal placeholder, and helm accepts that without a word. Charts whose version is a served API
 version (rule 4's second shape) keep literal versions; they belong to blueprint repositories.
 
-**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci.yaml`
-gains a default-safe `dry_run`, runs the preflight strictly before any push, and documents a top-level
-release-notes caller*; the check reports it as a warning until then, and a repository keeps its own
-release until that version exists.** On a `X.Y.Z` tag the repository calls PUBLISHING.md's
+**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci` 2.0.0*,
+which adds a required `index_channel` and checks the index token and channel eligibility before any push.
+1.1.0 already brought a `dry_run`, the preflight strictly before any push, and a documented top-level
+release-notes caller. R5 becomes a failure in the charts release that follows release-oci 2.0.0,
+announced to every repository's owner first; until then the check warns, and a repository keeps its own
+release, so that it migrates once.** On a `X.Y.Z` tag the repository calls PUBLISHING.md's
 `release-preflight.yaml` (rule 12), krateo-platformops/.github's `release-oci.yaml`, and `publish-chart.yaml`
 (rule 1), in that order. There is no repository-specific `release-tag.yaml`: a fix to the shared release
 reaches every repository at once, and only if no repository has its own.
