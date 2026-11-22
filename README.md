@@ -13,7 +13,8 @@ remains the source of truth; this registry republishes the same chart bytes.
 | **operators** | `helm repo add krateo-operators https://krateo-blueprints.github.io/charts/operators` | Operator/KOG install charts, CRD/helper/target subcharts, plain dependency/app charts. Installable via helm; not rendered as marketplace tiles. |
 
 **How every chart in the organisation is published is decided once, in [PUBLISHING.md](PUBLISHING.md)**, and
-`publish-chart.yaml` enforces it. New tarballs are stored in this repository's **Releases**. Entries indexed
+`publish-chart.yaml` enforces it. **How every repository is laid out (name, chart location and names, release path, files, checks) is
+decided in [REPOSITORY.md](REPOSITORY.md)**, and `repository-standard.yaml` checks it. New tarballs are stored in this repository's **Releases**. Entries indexed
 before 2026-11-07 keep their original URLs, so no existing release asset may be deleted.
 
 ## Layout

@@ -1,0 +1,36 @@
+name: test-repository-standard
+
+# Self-test for the reusable repository-standard.yaml (REPOSITORY.md). test/repository-standard/run.py
+# extracts the workflow's own check and runs it against generated repositories: one that conforms
+# passes, each case that breaks exactly one rule fails with that rule's id and no other, a test
+# fixture's or a vendored subchart's Chart.yaml is not a chart of the repository, and deleting each
+# rule block in turn lets every case written for it pass.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/repository-standard.yaml
+      - .github/workflows/test-repository-standard.yaml
+      - test/repository-standard/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/repository-standard.yaml
+      - .github/workflows/test-repository-standard.yaml
+      - test/repository-standard/**
+
+permissions:
+  contents: read
+
+jobs:
+  cases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Every case gets the verdict it should, and every rule fires
+        run: python3 -I test/repository-standard/run.py

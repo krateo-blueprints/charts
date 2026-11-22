@@ -1,0 +1,170 @@
+name: repository-standard
+
+# The repository standard (REPOSITORY.md), checked on the caller's own checkout.
+#
+# Callers (every provider and operator repository: names ending in -provider-kog or -operator-kog):
+#
+#   jobs:
+#     repository-standard:
+#       uses: krateo-blueprints/charts/.github/workflows/repository-standard.yaml@<full SHA> # X.Y.Z
+#
+# It reads files only: no network, no token, no write. Each rule is one marked block
+# (`# [rule:Rn]` ... `# [/rule:Rn]`); test-repository-standard.yaml deletes each block in turn and
+# requires the case that block exists for to flip, so no rule can stop firing unnoticed.
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        description: The repository name to check against the naming rule (defaults to the caller's).
+        type: string
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check the repository standard
+        env:
+          REPO_NAME: ${{ inputs.repository || github.event.repository.name }}
+          ROOT: .
+        run: |
+          python3 -I - <<'PY'
+          import os, re, sys
+
+          ROOT = os.environ["ROOT"]
+          NAME = os.environ["REPO_NAME"]
+          errors = []
+
+          def fail(rule, msg):
+              errors.append(f"{rule}: {msg}")
+
+          def read(rel):
+              try:
+                  with open(os.path.join(ROOT, rel), encoding="utf-8") as f:
+                      return f.read()
+              except OSError:
+                  return None
+
+          def field(text, key):
+              m = re.search(rf"^{key}:\s*['\"]?([^'\"\s#]+)", text or "", re.M)
+              return m.group(1) if m else None
+
+          # Every Chart.yaml that is a chart of this repository: not a vendored subchart (charts/<x>/)
+          # and not a test or example fixture.
+          FIXTURE = re.compile(r"(^|/)(test|tests|testdata|fixtures|e2e|examples?|samples?)(/|$)")
+          charts = []
+          for dp, dns, fns in os.walk(ROOT):
+              dns[:] = [d for d in dns if d != ".git"]
+              rel = os.path.relpath(dp, ROOT)
+              if "Chart.yaml" in fns and not FIXTURE.search(rel) and "/charts/" not in f"/{rel}/":
+                  charts.append("." if rel == "." else rel)
+
+          workflows = {}
+          wdir = os.path.join(ROOT, ".github", "workflows")
+          if os.path.isdir(wdir):
+              for fn in sorted(os.listdir(wdir)):
+                  if fn.endswith((".yml", ".yaml")):
+                      workflows[fn] = read(os.path.join(".github", "workflows", fn)) or ""
+          alltext = "\n".join(workflows.values())
+
+          def calls(path):
+              return re.search(rf"^\s*-?\s*uses:\s*['\"]?{re.escape(path)}@", alltext, re.M) is not None
+
+          # [rule:R1]
+          # R1 name: <vendor>-provider-kog, or <vendor>-operator-kog for a repository that wraps a
+          # Kubernetes operator. No krateo- prefix: the organisation already says Krateo.
+          if NAME.startswith("krateo-"):
+              fail("R1", f"repository name '{NAME}' starts with krateo-; the standard name is '{NAME[len('krateo-'):]}'")
+          elif not re.fullmatch(r"[a-z0-9]+(-[a-z0-9]+)*-(provider|operator)-kog", NAME):
+              fail("R1", f"repository name '{NAME}' is not <vendor>-provider-kog or <vendor>-operator-kog")
+          # [/rule:R1]
+
+          # [rule:R2]
+          # R2 layout: the chart at chart/, its per-account configuration chart (when there is one) at
+          # config-chart/, and no other chart.
+          if "chart" not in charts:
+              fail("R2", "no chart at chart/Chart.yaml")
+          stray = sorted(c for c in charts if c not in ("chart", "config-chart"))
+          if stray:
+              fail("R2", "charts outside chart/ and config-chart/: " + ", ".join(stray))
+          # [/rule:R2]
+
+          # [rule:R3]
+          # R3 chart names: chart/ is named after the repository, config-chart/ after it plus -config.
+          for d, want in (("chart", NAME), ("config-chart", NAME + "-config")):
+              if d in charts:
+                  got = field(read(f"{d}/Chart.yaml"), "name")
+                  if got != want:
+                      fail("R3", f"{d}/Chart.yaml name is '{got}', must be '{want}'")
+          # [/rule:R3]
+
+          # [rule:R4]
+          # R4 version: version and appVersion are the CHART_VERSION placeholder, stamped from the tag.
+          for d in ("chart", "config-chart"):
+              if d in charts:
+                  text = read(f"{d}/Chart.yaml")
+                  for key in ("version", "appVersion"):
+                      got = field(text, key)
+                      if got != "CHART_VERSION":
+                          fail("R4", f"{d}/Chart.yaml {key} is '{got}', must be CHART_VERSION")
+          # [/rule:R4]
+
+          # [rule:R5]
+          # R5 release: on a X.Y.Z tag, the shared release-preflight, release-oci and publish-chart, and
+          # no repository-specific release-tag workflow.
+          for path in ("krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
+                       "krateo-platformops/.github/.github/workflows/release-oci.yaml",
+                       "krateo-blueprints/charts/.github/workflows/publish-chart.yaml"):
+              if not calls(path):
+                  fail("R5", f"no workflow calls {path}")
+          if "release-tag.yaml" in workflows:
+              fail("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
+          # [/rule:R5]
+
+          # [rule:R6]
+          # R6 files: LICENSE, README.md, and Dependabot for github-actions (it keeps the SHA pins current).
+          for f in ("LICENSE", "README.md"):
+              if read(f) is None:
+                  fail("R6", f"missing {f}")
+          dep = read(".github/dependabot.yml") or read(".github/dependabot.yaml")
+          if dep is None or not re.search(r"package-ecosystem:\s*['\"]?github-actions", dep):
+              fail("R6", "missing .github/dependabot.yml with the github-actions ecosystem")
+          # [/rule:R6]
+
+          # [rule:R7]
+          # R7 docs: the docs bundle.
+          missing = [d for d in ("index.md", "overview.md", "configuration.md", "usage.md", "api.md",
+                                 "examples.md", "log.md", "release.md", "llms.txt")
+                     if read(f"docs/{d}") is None]
+          if missing:
+              fail("R7", "docs bundle incomplete, missing docs/" + ", docs/".join(missing))
+          # [/rule:R7]
+
+          # [rule:R8]
+          # R8 checks: the shared pinned-uses, lint-docs and security workflows, the release notes, and the
+          # repository's live reference preflight.
+          for path in ("krateo-blueprints/charts/.github/workflows/pinned-uses.yaml",
+                       "krateo-platformops/.github/.github/workflows/lint-docs.yaml",
+                       "krateo-platformops/.github/.github/workflows/security.yml",
+                       "krateo-platformops/.github/.github/workflows/release-notes.yaml"):
+              if not calls(path):
+                  fail("R8", f"no workflow calls {path}")
+          if read("hack/preflight-refs.py") is None or "preflight-refs.yaml" not in workflows:
+              fail("R8", "missing hack/preflight-refs.py run by .github/workflows/preflight-refs.yaml")
+          # [/rule:R8]
+
+          if errors:
+              print(f"{NAME}: {len(errors)} deviation(s) from the repository standard (REPOSITORY.md):")
+              for e in errors:
+                  print(f"  {e}")
+              sys.exit(1)
+          print(f"{NAME}: conforms to the repository standard.")
+          PY
