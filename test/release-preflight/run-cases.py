@@ -68,8 +68,16 @@ def main():
         f.write(script)
         path = f.name
     failures = 0
+    # The dangling-link fixture is built here, not committed: this repository hosts actions (index-gate),
+    # and a caller's runner unpacks the whole repository archive at the pinned commit to run one. A
+    # committed dangling symlink failed that unpacking ("Could not find file ...") for every caller of
+    # release-oci 2.0.0, before any step ran. test-repository-archive.yaml refuses any tracked symlink.
+    dangling = tempfile.mkdtemp()
+    os.makedirs(os.path.join(dangling, "hack"))
+    os.symlink("does-not-exist", os.path.join(dangling, "hack", "release-preflight"))
     for fixture, version, want_ok, want_text in CASES:
-        env = dict(os.environ, VERSION=version, WORKDIR=os.path.join(FIX, fixture))
+        workdir = dangling if fixture == "dangling" else os.path.join(FIX, fixture)
+        env = dict(os.environ, VERSION=version, WORKDIR=workdir)
         p = subprocess.run(["bash", path], env=env, capture_output=True, text=True)
         out = p.stdout + p.stderr
         ok = (p.returncode == 0) == want_ok and want_text in out

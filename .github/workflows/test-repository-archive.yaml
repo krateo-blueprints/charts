@@ -1,0 +1,39 @@
+name: test-repository-archive
+
+# This repository hosts actions (.github/actions/index-gate, used by publish-chart and by
+# krateo-platformops/.github release-oci). To run an action, a caller's runner downloads and unpacks the
+# WHOLE repository archive at the pinned commit, before any step runs. A file the runner cannot stage
+# fails every caller's job at "Prepare all required actions": a committed dangling symlink did exactly
+# that to release-oci 2.0.0 (krateo-platformops/observability run 45082862711). So no tracked file may be
+# a symlink; a test that needs one builds it at run time (test/release-preflight/run-cases.py).
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  no-symlinks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: No tracked file is a symlink
+        run: |
+          set -euo pipefail
+          # Control: the index there is real (a tracked file this check must see), so an empty answer below
+          # means "no symlink", not "git saw nothing".
+          git ls-files -s -- .github/actions/index-gate/gate.sh | grep -q . || { echo "::error::VOID: git ls-files sees no gate.sh"; exit 2; }
+          links="$(git ls-files -s | awk '$1 == "120000" { print $4 }')"
+          if [ -n "${links}" ]; then
+            echo "::error::tracked symlinks break the archive callers unpack to run this repository's actions; build them in the test instead:"
+            printf '  %s\n' ${links}
+            exit 1
+          fi
+          echo "no tracked symlinks ($(git ls-files | wc -l | tr -d ' ') files checked)"
