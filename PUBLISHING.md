@@ -440,9 +440,16 @@ No release reported any of this.
     OCI chart with no `--version` to the newest version that isn't a pre-release, so it installs a
     pre-release only when someone asks for that exact version.
 
+    A release that is never indexed may itself be a pre-release: krateo-platformops/.github's
+    `release-oci` passes `allow-prerelease: true` to `release-preflight.yaml` exactly when its
+    `index_channel` is `none`. The preflight then also accepts `X.Y.Z-<pre-release>` (SemVer 2.0: each
+    identifier numeric without a leading zero, or alphanumeric with a letter or hyphen; still no
+    `+build`). An indexed release never sets it, and the index gate refuses a pre-release anyway.
+
     The same pattern is checked twice:
     - **First, before any push:** `release-preflight.yaml` (rule 12) refuses the release version
-      before the caller's GHCR push.
+      before the caller's GHCR push, unless the release is never indexed and the version is a
+      well-formed pre-release.
     - **Second, at index time:** a pre-release handed to the publisher by mistake fails the content
       gate before anything is stored.
 
