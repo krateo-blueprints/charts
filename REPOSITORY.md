@@ -61,15 +61,35 @@ placeholder substitutes it globally**: a substitution anchored to `version:` sil
 as the literal placeholder, and helm accepts that without a word. Charts whose version is a served API
 version (rule 4's second shape) keep literal versions; they belong to blueprint repositories.
 
-**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci` 2.0.0*,
-which adds a required `index_channel` and checks the index token and channel eligibility before any push.
-1.1.0 already brought a `dry_run`, the preflight strictly before any push, and a documented top-level
-release-notes caller. R5 becomes a failure in the charts release that follows release-oci 2.0.0,
-announced to every repository's owner first; until then the check warns, and a repository keeps its own
-release, so that it migrates once.** On a `X.Y.Z` tag the repository calls PUBLISHING.md's
-`release-preflight.yaml` (rule 12), krateo-platformops/.github's `release-oci.yaml`, and `publish-chart.yaml`
-(rule 1), in that order. There is no repository-specific `release-tag.yaml`: a fix to the shared release
-reaches every repository at once, and only if no repository has its own.
+**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci` 2.1.0*,
+the first version every index channel can adopt. R5 becomes a failure in the charts release that follows
+release-oci 2.1.0, announced to every repository's owner first; until then the check warns, and a
+repository keeps its own release, so that it migrates once.** On a `X.Y.Z` tag the repository calls
+krateo-platformops/.github's `release-oci.yaml` with an explicit `index_channel`, and nothing else for the
+release: release-oci itself runs PUBLISHING.md's `release-preflight.yaml` (rule 12) before any push and,
+for a channel, `publish-chart.yaml` (rule 1) after it. A repository that also calls `publish-chart.yaml`
+or `release-preflight.yaml` beside release-oci runs them twice. There is no repository-specific
+`release-tag.yaml`: a fix to the shared release reaches every repository at once, and only if no
+repository has its own.
+
+The release-oci version depends on the channel:
+
+| `index_channel` | Charts | release-oci |
+| --- | --- | --- |
+| `none` | installed by the installer or by hand, never in an index | 2.0.0 or later |
+| `blueprints`, `pages`, `operators` | listed in that Marketplace index | 2.1.0 or later |
+
+2.0.0 indexes only the charts a run pushed, so re-running a release that pushed and then failed to index
+cannot finish it. 2.1.0 indexes every chart of the release, pushed or already published. A channel
+other than `none` passes `charts_publish_token` (the org secret `CHARTS_PUBLISH_TOKEN`), and `blueprints`
+or `pages` also sets `oci_repo: oci://ghcr.io/krateo-blueprints/charts` explicitly.
+
+Migrating removes more than `release-tag.yaml`. A repository that adopted PUBLISHING.md rule 12 (its own
+`release-preflight.yaml` call) and rule 14 (pushing through the `chart-push` action) did so on purpose,
+and release-oci now does both. So migrating deletes, beside the call to release-oci: the
+`release-tag.yaml`, the `release-preflight.yaml` job, the `chart-push` push path and any
+`publish-chart.yaml` or index job. Kept, a conscientious caller publishes twice. Release assets and
+release notes stay top-level callers.
 
 **R6. The repository carries `LICENSE`, `README.md` and `.github/dependabot.yml` for the
 `github-actions` ecosystem.** Dependabot is what keeps the SHA pins of rule 9 current.
