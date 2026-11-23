@@ -49,6 +49,14 @@ RULE13 = [
     ("v1.2.3", False), ("1.2.3-rc.1", False), ("1.2.3-main.gabc1234", False), ("1.2.3+build.5", False),
     ("1.2", False), ("1.2.3.4", False), (" 1.2.3", False), ("1.2.3 ", False), ("x.y.z", False),
 ]
+# allow-prerelease: true (a release that is never indexed), on the same fixture. (version, accepted?)
+RULE13_PRE = [
+    ("1.2.3", True), ("1.2.3-rc.1", True), ("0.3.74-main.g5bc3e76", True), ("2.13.127-rehearsal.1", True),
+    ("1.0.0-alpha", True), ("1.2.3-0", True), ("1.2.3-x-y", True), ("1.2.3--", True),
+    ("1.2.3-01", False), ("1.2.3-rc.01", False),            # numeric identifier with a leading zero (SemVer 2.0 s.9)
+    ("1.2.3+build.5", False), ("1.2.3-rc.1+b", False),     # still no +build
+    ("1.2.3-", False), ("1.2.3-rc..1", False), ("0.015.0-rc.1", False), ("v1.2.3-rc.1", False), ("1.2", False),
+]
 LOOSE = "PLAIN_VERSION='^[0-9]+\\.[0-9]+\\.[0-9]+$'"
 PATTERN = re.compile(r"^\s*PLAIN_VERSION='([^']*)'\s*$", re.M)
 
@@ -87,10 +95,10 @@ def main():
                  "success" if want_ok else "failure", want_text))
         if not ok:
             print("      output: " + out.strip().replace("\n", "\n              "))
-    def run13(script_text, version):
+    def run13(script_text, version, allow="false"):
         with tempfile.NamedTemporaryFile("w", suffix=".sh", delete=False) as g:
             g.write(script_text)
-        env = dict(os.environ, VERSION=version, WORKDIR=os.path.join(FIX, "absent"))
+        env = dict(os.environ, VERSION=version, WORKDIR=os.path.join(FIX, "absent"), ALLOW_PRERELEASE=allow)
         p = subprocess.run(["bash", g.name], env=env, capture_output=True, text=True)
         os.unlink(g.name)
         return p.returncode == 0, p.stdout + p.stderr
@@ -103,6 +111,24 @@ def main():
                                                                   "success" if plain else "refusal"))
         if not good:
             print("      output: " + out.strip().replace("\n", "\n              "))
+    for version, accepted in RULE13_PRE:
+        ok, out = run13(script, version, "true")
+        good = ok == accepted
+        failures += not good
+        print("%s  pre-release version=%-24r exit=%d  (want %s)" % ("ok  " if good else "FAIL", version, 0 if ok else 1,
+                                                                   "success" if accepted else "refusal"))
+        if not good:
+            print("      output: " + out.strip().replace("\n", "\n              "))
+    # Mutant: the input ignored, a pre-release accepted for an indexed release too. RULE13's -rc cases must notice.
+    ignored = script.replace('[ "${ALLOW_PRERELEASE:-false}" = "true" ]', "true", 1)
+    if ignored == script:
+        failures += 1
+        print("FAIL  the allow-prerelease test is not in the step; its mutant cannot be made")
+    else:
+        caught = [v for v, plain in RULE13 if not plain and "-" in v.lstrip("v") and run13(ignored, v)[0] is True]
+        failures += not caught
+        print("%s  mutant %-44s %s" % ("ok  " if caught else "FAIL", "allow-prerelease ignored (always on)",
+                                      "caught by %s" % ", ".join(caught) if caught else "NOT CAUGHT by any case"))
     lines = script.split("\n")
     b = [i for i, l in enumerate(lines) if "# BEGIN rule-13 preflight check" in l]
     e = [i for i, l in enumerate(lines) if "# END rule-13 preflight check" in l]
@@ -125,7 +151,7 @@ def main():
         failures += not same
         print("%s  pattern identical to the index gate's, gate.sh (%s)" % ("ok  " if same else "FAIL", pub if not same else m[0]))
     os.unlink(path)
-    print("%d case(s), %d rule-13 case(s), %d failure(s)" % (len(CASES), len(RULE13), failures))
+    print("%d case(s), %d rule-13 case(s), %d pre-release case(s), %d failure(s)" % (len(CASES), len(RULE13), len(RULE13_PRE), failures))
     return 1 if failures else 0
 
 

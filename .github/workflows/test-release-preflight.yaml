@@ -9,8 +9,8 @@ name: test-release-preflight
 #     script, the version arriving as $1, empty version, failing script, non-executable script and
 #     dangling link. A failing case can't run as a failing job here without turning this
 #     repository's CI red, so refusals are checked at the step.
-#   - call-passes / call-absent: real calls through `uses:`, which prove the wiring (checkout,
-#     inputs, working-directory).
+#   - call-passes / call-absent / call-prerelease: real calls through `uses:`, which prove the wiring
+#     (checkout, inputs, working-directory, allow-prerelease).
 #   - publish-after-preflight: `needs:` both calls, the shape PUBLISHING.md rule 12 asks of a
 #     caller's publishing job.
 
@@ -65,10 +65,19 @@ jobs:
       version: "9.8.7"
       working-directory: test/release-preflight/absent
 
+  # A release that is never indexed (release-oci's index_channel none) may be a pre-release.
+  call-prerelease:
+    uses: ./.github/workflows/release-preflight.yaml
+    with:
+      version: "9.8.7-rc.1"
+      working-directory: test/release-preflight/absent
+      allow-prerelease: true
+
   publish-after-preflight:
     needs:
       - call-passes
       - call-absent
+      - call-prerelease
     runs-on: ubuntu-latest
     steps:
       - name: Reached only because every preflight passed
