@@ -19,11 +19,7 @@ WF = os.path.join(HERE, "..", "..", ".github", "workflows", "repository-standard
 NAME = "acme-provider-kog"
 
 USES = {
-    "release": [
-        "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
-        "krateo-platformops/.github/.github/workflows/release-oci.yaml",
-        "krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
-    ],
+    "release": ["krateo-platformops/.github/.github/workflows/release-oci.yaml"],
     "lint": [
         "krateo-blueprints/charts/.github/workflows/pinned-uses.yaml",
         "krateo-platformops/.github/.github/workflows/lint-docs.yaml",
@@ -63,9 +59,12 @@ REPO_OF = {"krateo-acme-provider-kog": "krateo-acme-provider-kog", "krateo-acme-
            "acme-kog": "acme-kog", "acme-kog-config": "acme-kog"}
 
 
-def workflow(paths):
-    jobs = "".join(f"  j{i}:\n    uses: {p}@{SHA} # 1.0.0\n" for i, p in enumerate(paths))
+def workflow(paths, with_=""):
+    jobs = "".join(f"  j{i}:\n    uses: {p}@{SHA} # 1.0.0\n{with_}" for i, p in enumerate(paths))
     return f"on:\n  push:\njobs:\n{jobs}"
+
+
+RELEASE_WITH = "    with:\n      index_channel: none\n"
 
 
 def conforming(root):
@@ -78,7 +77,7 @@ def conforming(root):
         write(root, f"docs/{d}", "x\n")
     write(root, "hack/preflight-refs.py", "print('ok')\n")
     write(root, ".github/workflows/preflight-refs.yaml", "on:\n  push:\njobs:\n  p:\n    runs-on: ubuntu-latest\n")
-    write(root, ".github/workflows/release-oci.yaml", workflow(USES["release"]))
+    write(root, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH))
     write(root, ".github/workflows/lint.yaml", workflow(USES["lint"]))
     write(root, ".github/workflows/security.yml", workflow(USES["security"]))
     write(root, ".github/workflows/release-notes.yaml", workflow(USES["notes"]))
@@ -118,7 +117,13 @@ CASES = [
     ("R4 hand-written appVersion on the config chart", "R4", NAME, lambda r: write(
         r, "config-chart/Chart.yaml", chart(NAME + "-config").replace("appVersion: CHART_VERSION", "appVersion: 0.1.0"))),
     ("R5 no shared release-oci", "R5", NAME, lambda r: write(
-        r, ".github/workflows/release-oci.yaml", workflow([u for u in USES["release"] if "release-oci" not in u]))),
+        r, ".github/workflows/release-oci.yaml", workflow(["krateo-platformops/.github/.github/workflows/security.yml"]))),
+    ("R5 release-oci without index_channel", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"]))),
+    ("R5 publish-chart called beside release-oci", "R5", NAME, lambda r: write(
+        r, ".github/workflows/index.yaml", workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))),
+    ("R5 release-preflight called beside release-oci", "R5", NAME, lambda r: write(
+        r, ".github/workflows/preflight.yaml", workflow(["krateo-blueprints/charts/.github/workflows/release-preflight.yaml"]))),
     ("R5 a repository-specific release-tag.yaml", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-tag.yaml", "on:\n  push:\njobs:\n  r:\n    runs-on: ubuntu-latest\n")),
     ("R6 no LICENSE", "R6", NAME, lambda r: rm(r, "LICENSE")),
@@ -131,7 +136,9 @@ CASES = [
 ]
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
-ADVISORY = {"R5 no shared release-oci", "R5 a repository-specific release-tag.yaml", "R8 no preflight-refs workflow"}
+ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 publish-chart called beside release-oci",
+            "R5 release-preflight called beside release-oci", "R5 a repository-specific release-tag.yaml",
+            "R8 no preflight-refs workflow"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
 PASSES = [
