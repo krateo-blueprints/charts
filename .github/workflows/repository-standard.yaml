@@ -156,7 +156,8 @@ jobs:
                   if not re.search(r"^\s*index_channel:\s*\S", workflows[fn], re.M):
                       warn("R5", f".github/workflows/{fn} calls release-oci without index_channel (2.0.0 and later require it)")
               for path in ("krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
-                           "krateo-blueprints/charts/.github/workflows/release-preflight.yaml"):
+                           "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
+                           "krateo-platformops/.github/.github/actions/chart-push"):
                   if calls(path):
                       warn("R5", f"a workflow calls {path} beside release-oci, which already runs it; remove the call")
           if "release-tag.yaml" in workflows:

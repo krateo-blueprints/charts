@@ -84,6 +84,13 @@ cannot finish it. 2.1.0 indexes every chart of the release, pushed or already pu
 other than `none` passes `charts_publish_token` (the org secret `CHARTS_PUBLISH_TOKEN`), and `blueprints`
 or `pages` also sets `oci_repo: oci://ghcr.io/krateo-blueprints/charts` explicitly.
 
+Migrating removes more than `release-tag.yaml`. A repository that adopted PUBLISHING.md rule 12 (its own
+`release-preflight.yaml` call) and rule 14 (pushing through the `chart-push` action) did so on purpose,
+and release-oci now does both. So migrating deletes, beside the call to release-oci: the
+`release-tag.yaml`, the `release-preflight.yaml` job, the `chart-push` push path and any
+`publish-chart.yaml` or index job. Kept, a conscientious caller publishes twice. Release assets and
+release notes stay top-level callers.
+
 **R6. The repository carries `LICENSE`, `README.md` and `.github/dependabot.yml` for the
 `github-actions` ecosystem.** Dependabot is what keeps the SHA pins of rule 9 current.
 

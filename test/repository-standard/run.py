@@ -124,6 +124,9 @@ CASES = [
         r, ".github/workflows/index.yaml", workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))),
     ("R5 release-preflight called beside release-oci", "R5", NAME, lambda r: write(
         r, ".github/workflows/preflight.yaml", workflow(["krateo-blueprints/charts/.github/workflows/release-preflight.yaml"]))),
+    ("R5 chart-push used beside release-oci", "R5", NAME, lambda r: write(
+        r, ".github/workflows/push.yaml", "on:\n  push:\njobs:\n  p:\n    runs-on: ubuntu-latest\n    steps:\n"
+        f"      - uses: krateo-platformops/.github/.github/actions/chart-push@{SHA} # 1.0.0\n")),
     ("R5 a repository-specific release-tag.yaml", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-tag.yaml", "on:\n  push:\njobs:\n  r:\n    runs-on: ubuntu-latest\n")),
     ("R6 no LICENSE", "R6", NAME, lambda r: rm(r, "LICENSE")),
@@ -137,7 +140,8 @@ CASES = [
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
 ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 publish-chart called beside release-oci",
-            "R5 release-preflight called beside release-oci", "R5 a repository-specific release-tag.yaml",
+            "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
+            "R5 a repository-specific release-tag.yaml",
             "R8 no preflight-refs workflow"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
