@@ -2,7 +2,8 @@ name: test-index-gate
 
 # Self-test for the index-gate action (.github/actions/index-gate): publish-chart.yaml pins it by commit, and
 # that commit's gate.sh must be this commit's (test/index-gate/run-identity.py), so the gate the index runs is
-# the gate test-publish-chart.yaml's content-gate job tests. Needs the full history, hence fetch-depth 0.
+# the gate test-publish-chart.yaml's content-gate job (rule 13) and the `rules` job below (every other rule)
+# test. The identity job needs the full history, hence fetch-depth 0.
 
 on:
   pull_request:
@@ -38,3 +39,15 @@ jobs:
           python3 -m venv /tmp/venv
           /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
           /tmp/venv/bin/python -I test/index-gate/run-identity.py .
+
+  # Each rule of gate.sh refuses the one thing it is for, and only that rule does. Needs GNU tar, yq and helm,
+  # which the runner image carries.
+  rules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Every rule of gate.sh, and each rule's own mutant
+        run: python3 -I test/index-gate/run-rules.py .
