@@ -28,7 +28,15 @@ When this file and that repository disagree, this file wins and the repository i
 
 **R1. The name is `<vendor>-provider-kog`.** A repository that wraps a Kubernetes operator rather than a
 REST API is `<vendor>-operator-kog`. There is no `krateo-` prefix: the organisation already says Krateo.
-A renamed repository keeps GitHub's redirect from the old name.
+The check refuses the prefix and any other suffix. It can't know what a repository wraps, so it accepts
+both suffixes: **no build ever fails on `-operator-kog` over a REST API**, and choosing the right one is
+the owner's to do. A repository of several independent charts is a blueprint (R2) and R1 does not name it.
+
+**R1 and R3 land together.** R3 takes the chart's name, `home` and `sources` from the repository's name,
+so renaming either alone fails. Where the chart is installed anywhere, the repository rename therefore
+waits for the plan in [Changing a published name](#changing-a-published-name); it is not a step of
+adopting the rest of this standard. GitHub redirects the old name for browsing, git and the API, but
+**a redirect does not satisfy R3 or publish-chart**, which compare the name as a string.
 
 **R2. The chart is at `chart/`. A per-account configuration chart, when there is one, is at
 `config-chart/`. There is no other chart.** Not charts of the repository, and never published: anything
@@ -122,6 +130,11 @@ removal can take the generated CRDs and every custom resource with them. So a re
 requires is planned per cluster with the installer's owner: the new name added and the old one retired
 in one installer change, the old values key kept until no live installation carries it, and the
 installed custom resources proven to survive the move before any cluster is touched.
+
+In a repository rename, every place that names the repository (`home`, `sources`, and the
+`krateo.io/source-repo` annotation where the chart carries one) changes in one pull request, merged right
+after the GitHub rename, with no release tagged in between. Versions already published keep the old
+address and are not republished: see [PUBLISHING.md rule 6](PUBLISHING.md).
 
 ## What is never done
 

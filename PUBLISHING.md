@@ -118,6 +118,9 @@ No release reported any of this.
    overwrite a stored version. It finds the owner from, in order: the entry's `krateo.io/source-repo`
    annotation; this repository's release notes for that version; the repository named in the
    entry's URL; the first organisation repository in the entry's `sources`.
+   - **Renamed repositories keep their names.** A recorded owner is compared by its current name on
+     GitHub, so a rename needs no change to what is already published, and **no version is bumped only
+     to correct `krateo.io/source-repo`**: the next real release carries the new name.
    - **Unresolved names:** 37 names from the 2026 backfill resolve to none of these. The first
      repository to publish one after this standard claims it, and the release notes record the
      claim, so it resolves from then on.
