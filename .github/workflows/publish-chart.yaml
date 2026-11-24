@@ -325,7 +325,9 @@ jobs:
             cy="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml')"
             want+=("$(yq -r '.name' <<< "$cy")=$(yq -r '.version' <<< "$cy")")
           done
-          missing=()
+          # Everything is missing until a served index has been read: an index that can never be fetched
+          # must not read as one that lacks nothing.
+          missing=("${want[@]}")
           for attempt in $(seq 1 20); do
             curl -fsSL "${REPO_URL}/index.yaml?nocache=$(date +%s)" -o served.yaml || { sleep 30; continue; }
             missing=()

@@ -61,6 +61,9 @@ jobs:
           /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
           /tmp/venv/bin/python test/publish-chart/run-content-gate.py
 
+      - name: The availability checks can fail, each for its own reason
+        run: /tmp/venv/bin/python test/publish-chart/run-availability.py
+
   ownership-guard:
     runs-on: ubuntu-latest
     steps:
