@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Every rule of the index gate, one case per rule, each proven by deleting that rule.
+"""The index gate's rules other than the version's, each proven by disabling it.
 
-test/publish-chart/run-content-gate.py proves rule 13 (versions). This covers the rest of gate.sh: the archive's
-name, sources (rule 3), the channel (rule 2), the CompositionDefinition, the icon and the keywords.
+test/publish-chart/run-content-gate.py proves rule 13 (versions). This covers the rest of gate.sh that can run: the
+archive's name, sources (rule 3), the channel (rule 2), the CompositionDefinition, the icon and the keywords.
+One refusal of gate.sh has no case because it can't be reached: "no compositiondefinition.yaml in the archive". A
+chart without one is an operator chart by the gate's own definition, so the channel rule has already refused it.
 
 A case is a complete, valid chart with ONE thing wrong. It must be refused, with that rule's own message and no
 other ::error::. Then the rule is disabled in a copy of gate.sh and the same archive is run again: it must now be
@@ -33,7 +35,7 @@ def chart(**over):
     """The fields of one chart; `over` changes them."""
     c = dict(name="demo", version="1.2.3", sources=[URL], icon="https://example.com/i.png", keywords=["k"],
              kind=None, schema=True, cd=True, cd_url="oci://ghcr.io/krateo-blueprints/charts/demo",
-             cd_version="1.2.3", rename=None, decoy=False)
+             cd_version="1.2.3", rename=None)
     c.update(over)
     return c
 
@@ -64,9 +66,10 @@ def package(tmp, c):
         os.rename(os.path.join(dist, f"{c['name']}-{c['version']}.tgz"), os.path.join(dist, c["rename"]))
 
 
-def run(gate_text, channel, c):
+def run(gate_text, channel, *charts):
     with tempfile.TemporaryDirectory() as tmp:
-        package(tmp, c)
+        for c in charts:
+            package(tmp, c)
         g = os.path.join(tmp, "gate.sh")
         open(g, "w").write(gate_text)
         env = dict(os.environ, SRC=SRC, CHANNEL=channel)
@@ -88,6 +91,8 @@ ACCEPTED = [
     ("an operator chart", "operators", chart(schema=False, cd=False, icon=None, keywords=[])),
     ("sources in another letter case", "blueprints", chart(sources=["https://github.com/Krateo-Blueprints/Example-Repo"])),
     ("sources with a trailing slash", "blueprints", chart(sources=[URL + "/"])),
+    # release-oci hands the gate every chart of a release at once.
+    ("two charts in one release", "blueprints", chart(), chart(name="other", cd_url="oci://ghcr.io/krateo-blueprints/charts/other")),
     ("sources listing the repository second", "blueprints", chart(sources=["https://example.com/upstream", URL])),
 ]
 
@@ -122,8 +127,8 @@ def main():
         void(f"{GATE} is missing")
     gate = open(GATE).read()
     bad, ran = [], 0
-    for what, channel, c in ACCEPTED:
-        ok, errors = run(gate, channel, c)
+    for what, channel, *charts in ACCEPTED:
+        ok, errors = run(gate, channel, *charts)
         ran += 1
         print(f"  {'ok  ' if ok else 'FAIL'} accepted: {what}")
         if not ok:
@@ -142,6 +147,15 @@ def main():
         if not mok:
             bad.append(f"{what}: still refused with its rule disabled, so this case does not test it: {merrors}")
         print(f"  {'ok  ' if (not ok and mok) else 'FAIL'} refused by its own rule: {what}")
+    # One bad chart refuses the release whichever comes first, and the good one is not blamed.
+    for names in (("aaa", "demo"), ("zzz", "demo")):
+        good = chart(name=names[0], cd_url=f"oci://ghcr.io/krateo-blueprints/charts/{names[0]}")
+        ok, errors = run(gate, "blueprints", good, chart(sources=[OLD_URL]))
+        ran += 1
+        right = not ok and len(errors) == 1 and errors[0].startswith("::error::demo:")
+        print(f"  {'ok  ' if right else 'FAIL'} a bad chart beside a good one ({names[0]}) is refused, by name")
+        if not right:
+            bad.append(f"a bad chart beside {names[0]}: {'accepted' if ok else errors}")
     if bad:
         print("\n".join("FAIL: " + b for b in bad))
         sys.exit(1)
