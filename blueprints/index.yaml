@@ -54103,6 +54103,38 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "26.0"
+    created: "2026-11-24T03:27:14.671334912Z"
+    description: Krateo Operator Generator (KOG) packaging that exposes Keycloak Admin
+      API resources (realm, client, protocol-mapper, client-scope, group, identity-provider)
+      as native Kubernetes custom resources. oasgen-provider + rest-dynamic-controller
+      reconcile each CR against a running Keycloak's Admin REST API. The bearer admin
+      token is delivered/rotated into a Secret by the External Secrets Operator.
+    digest: 59fe336526cff0c92369d999ab973a4319c7dd822df25f8b144f10b3b941026b
+    home: https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - security
+    - keycloak
+    - identity
+    - kog
+    maintainers:
+    - name: krateo
+    name: keycloak-config-kog
+    sources:
+    - https://github.com/krateo-blueprints/krateo-keycloak-operator-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/keycloak-config-kog-0.16.0/keycloak-config-kog-0.16.0.tgz
+    version: 0.16.0
+  - annotations:
+      krateo.io/category: security
+      krateo.io/display-name: Keycloak Config KOG
+      krateo.io/maturity: beta
+      krateo.io/requires-oasgen-provider: '>= 0.91.1'
+      krateo.io/requires-oasgen-provider-crd: '>= 0.91.1'
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "26.0"
     created: "2026-11-23T23:46:31.589119676Z"
     description: Krateo Operator Generator (KOG) packaging that exposes Keycloak Admin
       API resources (realm, client, protocol-mapper, client-scope, group, identity-provider)
@@ -83230,4 +83262,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-23T23:46:31.587312848Z"
+generated: "2026-11-24T03:27:14.66984278Z"
