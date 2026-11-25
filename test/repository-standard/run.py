@@ -64,7 +64,7 @@ def workflow(paths, with_=""):
     return f"on:\n  push:\njobs:\n{jobs}"
 
 
-RELEASE_WITH = "    with:\n      index_channel: none\n"
+RELEASE_WITH = "    permissions:\n      contents: read\n      packages: write\n    with:\n      index_channel: none\n"
 
 
 def conforming(root):
@@ -128,6 +128,8 @@ CASES = [
         r, ".github/workflows/release-oci.yaml", workflow(["krateo-platformops/.github/.github/workflows/security.yml"]))),
     ("R5 release-oci without index_channel", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"]))),
+    ("R5 release-oci caller without packages: write", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], "    with:\n      index_channel: none\n"))),
     ("R5 publish-chart called beside release-oci", "R5", NAME, lambda r: write(
         r, ".github/workflows/index.yaml", workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))),
     ("R5 release-preflight called beside release-oci", "R5", NAME, lambda r: write(
@@ -147,7 +149,7 @@ CASES = [
 ]
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
-ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 publish-chart called beside release-oci",
+ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 publish-chart called beside release-oci",
             "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
             "R5 a repository-specific release-tag.yaml",
             "R8 no preflight-refs workflow"}
