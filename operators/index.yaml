@@ -1425,6 +1425,25 @@ entries:
     version: 0.17.0
   child-parent-sso:
   - apiVersion: v2
+    created: "2026-11-25T10:53:30.480715057Z"
+    description: The child authn's OIDCConfig for signing in through the parent platform's
+      Keycloak as a public client, and admin rights in the child for the instance's
+      parent group.
+    digest: c1b4651d3622bae75b94a1bf508d48926e8868ea1b718ab9e1fb0703082101f3
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - authn
+    - oidc
+    name: child-parent-sso
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/child-parent-sso-0.2.71/child-parent-sso-0.2.71.tgz
+    version: 0.2.71
+  - apiVersion: v2
     created: "2026-11-24T12:00:42.181714114Z"
     description: The child authn's OIDCConfig for signing in through the parent platform's
       Keycloak as a public client, and admin rights in the child for the instance's
@@ -4650,6 +4669,23 @@ entries:
     version: 1.3.1
   selfservice-status:
   - apiVersion: v2
+    created: "2026-11-25T10:53:30.573738472Z"
+    description: RESTAction that gives a SelfserviceKrateo composition its portal
+      URL, plan and trial deadline.
+    digest: 5942ec4d6532351dc9d6850ec62b1627677f8d897591685e263c3ce682162e28
+    home: https://krateo.io
+    keywords:
+    - krateo
+    - selfservice
+    - restaction
+    name: selfservice-status
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/selfservice-status-0.2.71/selfservice-status-0.2.71.tgz
+    version: 0.2.71
+  - apiVersion: v2
     created: "2026-11-24T12:00:42.292691Z"
     description: RESTAction that gives a SelfserviceKrateo composition its portal
       URL, plan and trial deadline.
@@ -5107,4 +5143,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/operators/wafv2-chart-1.4.2.tgz
     version: 1.4.2
-generated: "2026-11-24T12:49:20.505381804Z"
+generated: "2026-11-25T10:53:30.573443486Z"
