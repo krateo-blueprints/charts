@@ -6,7 +6,9 @@
 #
 # Usage: gate.sh <dir of .tgz>     Env: CHANNEL (blueprints | pages | operators), SRC (<owner>/<repo> that builds
 #                                       the charts). Needs bash, GNU tar (--wildcards), yq (mikefarah), grep.
-# Exit 0 when every archive passes, 1 otherwise, naming each failure as a ::error:: line.
+# Exit 0 when every archive passes, 1 otherwise, naming each failure as a ::error:: line. It names every archive
+# it checks and ends with how many, and a directory with no archive is a failure: a gate that checked nothing
+# must not read as one that passed.
 #
 # The body below is publish-chart.yaml's former "Content gate" step, unchanged but for the directory parameter;
 # test/index-gate/run-identity.py proves that while publish-chart still carries the step inline.
@@ -19,7 +21,14 @@ DIST="${1:?usage: gate.sh <dir of .tgz>}"
 # every chart. --no-wildcards-match-slash keeps '*' inside one path segment: the chart's
 # own Chart.yaml, not those of its vendored charts/<dep>/ as well.
 fail=0
-for tgz in "${DIST}"/*.tgz; do
+shopt -s nullglob
+archives=("${DIST}"/*.tgz)
+shopt -u nullglob
+if [ "${#archives[@]}" -eq 0 ]; then
+  echo "::error::no .tgz in ${DIST}: the index gate has nothing to check"
+  exit 1
+fi
+for tgz in "${archives[@]}"; do
   # Read each archive ONCE, then match with a here-string. Never `tar ... | grep -q`: grep -q
   # exits on its FIRST match, tar is then killed by SIGPIPE (141), and under `set -o pipefail`
   # the pipeline status BECOMES 141 -- so the file being present made the test FAIL. Whether
@@ -32,6 +41,7 @@ for tgz in "${DIST}"/*.tgz; do
   chart_yaml="$(tar -xzO --wildcards --no-wildcards-match-slash -f "$tgz" '*/Chart.yaml')"
   name="$(yq -r '.name' <<< "$chart_yaml")"
   version="$(yq -r '.version' <<< "$chart_yaml")"
+  echo "checking ${name} ${version} for ${CHANNEL}"
   if [ "$(basename "$tgz")" != "${name}-${version}.tgz" ]; then
     echo "::error::$(basename "$tgz"): Chart.yaml says ${name} ${version}"; fail=1; continue
   fi
@@ -91,4 +101,5 @@ for tgz in "${DIST}"/*.tgz; do
   esac
   [ "$(yq -r '(.keywords // []) | length' <<< "$chart_yaml")" -gt 0 ] || { echo "::error::$name: Chart.yaml needs keywords, the Marketplace's tags"; fail=1; }
 done
+echo "index gate (${CHANNEL}): ${#archives[@]} archive(s) checked, $([ "$fail" = 0 ] && echo "every one passes" || echo "refused above")"
 [ "$fail" = "0" ] || exit 1

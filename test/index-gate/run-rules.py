@@ -78,10 +78,12 @@ def run(gate_text, channel, *charts):
             os.makedirs(b)
             os.symlink(shutil.which("gtar"), os.path.join(b, "tar"))
             env["PATH"] = b + os.pathsep + env["PATH"]
+        os.makedirs(os.path.join(tmp, "dist"), exist_ok=True)
         r = subprocess.run(["bash", g, "dist"], cwd=tmp, env=env, capture_output=True, text=True)
         errors = [l for l in r.stdout.splitlines() if l.startswith("::error::")]
         if r.returncode not in (0, 1) or (r.returncode == 1 and not errors):
             void(f"the gate did not finish: exit {r.returncode}\n{r.stdout}{r.stderr}")
+        run.stdout = r.stdout
         return r.returncode == 0, errors
 
 
@@ -130,9 +132,14 @@ def main():
     for what, channel, *charts in ACCEPTED:
         ok, errors = run(gate, channel, *charts)
         ran += 1
-        print(f"  {'ok  ' if ok else 'FAIL'} accepted: {what}")
+        said = [f"checking {c['name']} {c['version']} for {channel}" for c in charts] + [
+            f"index gate ({channel}): {len(charts)} archive(s) checked, every one passes"]
+        quiet = [l for l in said if l not in run.stdout.splitlines()]
+        print(f"  {'ok  ' if ok and not quiet else 'FAIL'} accepted, and says so: {what}")
         if not ok:
             bad.append(f"{what}: refused: {errors}")
+        elif quiet:
+            bad.append(f"{what}: accepted without saying {quiet}")
     for what, channel, c, message, (old, new) in REFUSED:
         ok, errors = run(gate, channel, c)
         ran += 1
@@ -147,6 +154,18 @@ def main():
         if not mok:
             bad.append(f"{what}: still refused with its rule disabled, so this case does not test it: {merrors}")
         print(f"  {'ok  ' if (not ok and mok) else 'FAIL'} refused by its own rule: {what}")
+    # Nothing to check is a failure, not a pass. Without the guard the same directory passes, so the case tests it.
+    EMPTY = ('if [ "${#archives[@]}" -eq 0 ]; then', "if false; then")
+    ok, errors = run(gate, "blueprints")
+    ran += 1
+    if gate.count(EMPTY[0]) != 1:
+        void(f"the empty-directory guard is in gate.sh {gate.count(EMPTY[0])} times, not once")
+    mok, _ = run(gate.replace(*EMPTY), "blueprints")
+    ran += 1
+    right = not ok and len(errors) == 1 and "nothing to check" in errors[0] and mok
+    print(f"  {'ok  ' if right else 'FAIL'} a directory with no archive is refused, by its own guard")
+    if not right:
+        bad.append(f"no archive: {'accepted' if ok else errors}; without the guard {'accepted' if mok else 'refused'}")
     # One bad chart refuses the release whichever comes first, and the good one is not blamed.
     for names in (("aaa", "demo"), ("zzz", "demo")):
         good = chart(name=names[0], cd_url=f"oci://ghcr.io/krateo-blueprints/charts/{names[0]}")
