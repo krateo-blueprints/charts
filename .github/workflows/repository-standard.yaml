@@ -164,6 +164,8 @@ jobs:
                       warn("R5", f".github/workflows/{fn} calls release-oci without index_channel (2.0.0 and later require it)")
                   if not re.search(r"^\s*packages:\s*write\b", workflows[fn], re.M):
                       warn("R5", f".github/workflows/{fn} calls release-oci without granting packages: write; the run would end at startup")
+                  if re.search(r"^\s*workflow_dispatch\s*:", workflows[fn], re.M) and not re.search(r"^\s*chart_version:\s*\S", workflows[fn], re.M):
+                      warn("R5", f".github/workflows/{fn} can be dispatched but passes no chart_version; a dispatch has a branch as its ref, so its release is refused")
               for path in ("krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
                            "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
                            "krateo-platformops/.github/.github/actions/chart-push"):
