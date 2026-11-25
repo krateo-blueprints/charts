@@ -116,7 +116,7 @@ jobs:
       # .github/actions/index-gate/gate.sh. Pinned by commit like any reusable (rule 9).
       - name: Index gate
         id: gate
-        uses: krateo-blueprints/charts/.github/actions/index-gate@1107f3a8736f2dfbaa6a04f5c1e3a15d07fb1d5b # 1.9.2
+        uses: krateo-blueprints/charts/.github/actions/index-gate@c5633d589525f38ec8c4887a7cf3ea720070a59d # the gate that names what it checked
 
       - name: Content gate (right channel, complete archive)
         run: bash "${{ steps.gate.outputs.path }}" dist
