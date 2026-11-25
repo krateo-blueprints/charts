@@ -36,7 +36,16 @@ the owner's to do. A repository of several independent charts is a blueprint (R2
 so renaming either alone fails. Where the chart is installed anywhere, the repository rename therefore
 waits for the plan in [Changing a published name](#changing-a-published-name); it is not a step of
 adopting the rest of this standard. GitHub redirects the old name for browsing, git and the API, but
-**a redirect does not satisfy R3 or publish-chart**, which compare the name as a string.
+**a redirect does not satisfy the chart's own `home` and `sources`**: R3 and publish-chart's sources check
+compare them as strings, so the rename's pull request updates them. **The ownership guard is
+rename-safe**: publish-chart resolves the owner recorded in the index (its `krateo.io/source-repo`, or
+the release body that published it) through the API, so a version published under the old name still
+belongs to the renamed repository. The first rename (2026-11-25) measured it: an index entry recording
+the old name matched the new one.
+
+When replacing the old name across a repository, leave alone the text that must keep it: recorded
+evidence (logs, payloads, absolute paths captured by a past run) and sentences about the name as it was.
+Replacing them falsifies a record or makes the sentence wrong.
 
 **R2. The chart is at `chart/`. A per-account configuration chart, when there is one, is at
 `config-chart/`. There is no other chart.** Not charts of the repository, and never published: anything
