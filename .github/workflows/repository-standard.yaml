@@ -162,6 +162,8 @@ jobs:
               for fn in callers:
                   if not re.search(r"^\s*index_channel:\s*\S", workflows[fn], re.M):
                       warn("R5", f".github/workflows/{fn} calls release-oci without index_channel (2.0.0 and later require it)")
+                  if not re.search(r"^\s*packages:\s*write\b", workflows[fn], re.M):
+                      warn("R5", f".github/workflows/{fn} calls release-oci without granting packages: write; the run would end at startup")
               for path in ("krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
                            "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
                            "krateo-platformops/.github/.github/actions/chart-push"):

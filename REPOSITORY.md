@@ -113,6 +113,28 @@ cannot finish it. 2.1.0 indexes every chart of the release, pushed or already pu
 other than `none` passes `charts_publish_token` (the org secret `CHARTS_PUBLISH_TOKEN`), and `blueprints`
 or `pages` also sets `oci_repo: oci://ghcr.io/krateo-blueprints/charts` explicitly.
 
+**The calling job grants what release-oci needs**, because a called workflow can't have more than its
+caller allows, and a repository's default is read-only:
+
+```yaml
+jobs:
+  release:
+    permissions:
+      contents: read
+      packages: write
+    uses: krateo-platformops/.github/.github/workflows/release-oci.yaml@<full SHA> # X.Y.Z
+```
+
+Without it the run ends at startup with no job, no log and no error through the API: the reason
+("requesting 'packages: write', but is only allowed 'packages: read'") is shown only on the run's web
+page. Nothing is pushed.
+
+**A first-time caller can't rehearse before merging.** A `workflow_dispatch` workflow must be on the
+default branch before it can be dispatched. So the order is merge (the caller triggers only on tags and
+dispatch, so a merge publishes nothing), then a dry-run dispatch, then the tag. A caller's `dry_run`
+input defaults to `true`, and the job passes `github.event_name == 'workflow_dispatch' && inputs.dry_run`,
+so a mistyped dispatch rehearses and only a tag publishes.
+
 Migrating removes more than `release-tag.yaml`. A repository that adopted PUBLISHING.md rule 12 (its own
 `release-preflight.yaml` call) and rule 14 (pushing through the `chart-push` action) did so on purpose,
 and release-oci now does both. So migrating deletes, beside the call to release-oci: the
