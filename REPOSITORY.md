@@ -51,6 +51,14 @@ directory name is the only thing between a fixture and the registry and the inde
 needs several independent charts is a blueprint, not a provider; how a chart is versioned is a separate
 question (R4).
 
+**Moving a chart to `chart/` is proven by the repository's chart gates speaking, not by CI passing.**
+A gate that discovers charts by a glob over the old path finds nothing after the move and passes: one
+`return 0` when its list is empty, one shell loop over a glob that stayed literal without `nullglob`
+and skipped its one iteration. Both were measured on a real move, with the build green and
+`0 chart(s)` checked. So, on the move, a repository replaces each discovery glob with the explicit
+paths R2 fixes (`chart/`, and `config-chart/` when there is one), makes an empty set an error, and
+reads the gate's log for one line per chart.
+
 **R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`.** The published
 name then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
 `github-provider-kog/chart/`. Both charts' `home` and `sources` name the repository
