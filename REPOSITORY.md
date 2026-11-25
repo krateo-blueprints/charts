@@ -51,17 +51,24 @@ directory name is the only thing between a fixture and the registry and the inde
 needs several independent charts is a blueprint, not a provider; how a chart is versioned is a separate
 question (R4).
 
-**Moving a chart to `chart/` is proven by the repository's chart gates speaking, not by CI passing.**
-A gate that discovers charts by a glob over the old path finds nothing after the move and passes: one
-`return 0` when its list is empty, one shell loop over a glob that stayed literal without `nullglob`
-and skipped its one iteration. Both were measured on a real move, with the build green and
-`0 chart(s)` checked. So, on the move, a repository replaces each discovery glob with the explicit
-paths R2 fixes (`chart/`, and `config-chart/` when there is one), makes an empty set an error, and
-reads the gate's log for one line per chart.
+**A gate that discovers what it checks passes when it finds nothing**, unless it is written not to. On a
+real move to `chart/`, two chart gates globbing the old path passed with `0 chart(s)` checked and the
+build green: one returned 0 on an empty list, one shell loop kept its glob literal without `nullglob`
+and skipped its one iteration. The careless move (a bare `git mv`) failed loudly elsewhere; the careful
+one, with those failures fixed, left the gates disarmed. The same shape needs no move at all: an asset
+check globbing `chart/assets/*.yaml` printed `0 assets` and exited 0 with every asset removed. So a
+repository names the paths R2 fixes (`chart/`, and `config-chart/` when there is one) instead of
+discovering them, makes an empty set an error in every gate that counts, and reads a gate's log for its
+count, not its exit code. The shared release already refuses an empty set.
 
-**R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`.** The published
-name then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
-`github-provider-kog/chart/`. Both charts' `home` and `sources` name the repository
+**R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`. A `chart/` that
+ships a Composition instead (it carries `compositiondefinition.yaml`) is named after what the Composition
+provisions, and its `krateo.io/source-repo` annotation names the repository.** The published name or the
+annotation then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
+`github-provider-kog/chart/`. A Composition does not take the repository's name, which belongs to the
+provider's own chart. What keeps a name to one owner is `sources`, not the name (below), and a pin never
+names a source repository: installer pins chart names against a registry, and already installs one
+repository's charts under three names. Both charts' `home` and `sources` name the repository
 (`https://github.com/krateo-blueprints/<repo>`): publish-chart refuses a chart whose `sources` does not
 list its publishing repository, and compares a string, so a GitHub redirect does not satisfy it. **A
 repository rename (R1) therefore updates `home` and `sources` in the same change**, and is never a GitHub

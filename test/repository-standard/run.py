@@ -112,6 +112,14 @@ CASES = [
         r, "chart/Chart.yaml", chart(NAME).replace(f"  - https://github.com/krateo-blueprints/{NAME}", "  - https://github.com/krateo-blueprints/krateo-acme-kog"))),
     ("R3 home names another repository", "R3", NAME, lambda r: write(
         r, "config-chart/Chart.yaml", chart(NAME + "-config").replace(f"home: https://github.com/krateo-blueprints/{NAME}", "home: https://github.com/krateo-blueprints/elsewhere"))),
+    ("R3 a Composition chart named otherwise, without source-repo", "R3", NAME, lambda r: (
+        write(r, "chart/Chart.yaml", chart("acme-network")), write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
+    ("R3 a Composition chart whose source-repo names another repository", "R3", NAME, lambda r: (
+        write(r, "chart/Chart.yaml", chart("acme-network") + "annotations:\n  krateo.io/source-repo: https://github.com/krateo-blueprints/elsewhere\n"),
+        write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
+    ("R3 source-repo outside annotations does not count", "R3", NAME, lambda r: (
+        write(r, "chart/Chart.yaml", chart("acme-network") + f"keywords:\n  - krateo.io/source-repo: https://github.com/krateo-blueprints/{NAME}\n"),
+        write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
     ("R4 hand-written version", "R4", NAME, lambda r: write(
         r, "chart/Chart.yaml", chart(NAME).replace("version: CHART_VERSION\napp", "version: 0.1.0\napp"))),
     ("R4 hand-written appVersion on the config chart", "R4", NAME, lambda r: write(
@@ -148,6 +156,9 @@ ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", 
 PASSES = [
     ("conforms", NAME, lambda r: None),
     ("conforms without a config chart", NAME, lambda r: rm(r, "config-chart")),
+    ("a Composition chart named after what it provisions, with source-repo", NAME, lambda r: (
+        write(r, "chart/Chart.yaml", chart("acme-network") + f"annotations:\n  krateo.io/source-repo: https://github.com/krateo-blueprints/{NAME}\n"),
+        write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
     ("a test fixture's Chart.yaml is not a chart", NAME, lambda r: write(r, "test/fixtures/x/Chart.yaml", chart("x"))),
     ("a vendored subchart is not a chart", NAME, lambda r: write(r, "chart/charts/dep/Chart.yaml", chart("dep"))),
     ("a vendored subchart of the config chart is not a chart", NAME, lambda r: write(r, "config-chart/charts/dep/Chart.yaml", chart("dep"))),

@@ -111,7 +111,9 @@ jobs:
           # [/rule:R2]
 
           # [rule:R3]
-          # R3 chart names: chart/ is named after the repository, config-chart/ after it plus -config.
+          # R3 chart names: chart/ is named after the repository, config-chart/ after it plus -config. A
+          # chart/ that ships a Composition (it carries compositiondefinition.yaml) is named after what it
+          # provisions instead, and names its repository in the krateo.io/source-repo annotation.
           # And `home` and `sources` name the repository: publish-chart refuses a chart whose sources
           # do not list its publishing repository (a string, so a GitHub redirect does not satisfy it),
           # and a rename that updates neither drifts silently until release day.
@@ -120,7 +122,12 @@ jobs:
               if d in charts:
                   text = read(f"{d}/Chart.yaml")
                   got = field(text, "name")
-                  if got != want:
+                  if d == "chart" and read("chart/compositiondefinition.yaml") is not None:
+                      a = re.search(r"^annotations:\s*\n((?:[ \t]+.*\n?)+)", text or "", re.M)
+                      s = re.search(r"^[ \t]+['\"]?krateo\.io/source-repo['\"]?:\s*['\"]?([^'\"\s#]+)", a.group(1), re.M) if a else None
+                      if not s or s.group(1).rstrip("/").lower() != url.lower():
+                          fail("R3", f"chart/ ships a Composition named '{got}': its krateo.io/source-repo annotation must be {url}")
+                  elif got != want:
                       fail("R3", f"{d}/Chart.yaml name is '{got}', must be '{want}'")
                   home = (field(text, "home") or "").rstrip("/").lower()
                   if home != url.lower():
