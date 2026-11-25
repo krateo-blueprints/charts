@@ -63,7 +63,10 @@ count, not its exit code. The shared release already refuses an empty set.
 
 **R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`. A `chart/` that
 ships a Composition instead (it carries `compositiondefinition.yaml`) is named after what the Composition
-provisions, and its `krateo.io/source-repo` annotation names the repository.** The published name or the
+provisions, and its `krateo.io/source-repo` annotation names the repository.** The annotation names the
+repository as it is now, like `home` and `sources`, and moves with them in the rename's pull request:
+written ahead of an R1 rename it would name a repository that doesn't exist yet, and repository-standard
+refuses it. The published name or the
 annotation then says where the source is: `oci://ghcr.io/krateo-blueprints/charts/github-provider-kog` is
 `github-provider-kog/chart/`. A Composition does not take the repository's name, which belongs to the
 provider's own chart. What keeps a name to one owner is `sources`, not the name (below), and a pin never
