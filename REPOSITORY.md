@@ -131,9 +131,20 @@ page. Nothing is pushed.
 
 **A first-time caller can't rehearse before merging.** A `workflow_dispatch` workflow must be on the
 default branch before it can be dispatched. So the order is merge (the caller triggers only on tags and
-dispatch, so a merge publishes nothing), then a dry-run dispatch, then the tag. A caller's `dry_run`
-input defaults to `true`, and the job passes `github.event_name == 'workflow_dispatch' && inputs.dry_run`,
-so a mistyped dispatch rehearses and only a tag publishes.
+dispatch, so a merge publishes nothing), then a dry-run dispatch **with an explicit version**, then the
+tag. release-oci takes the version from the ref when `chart_version` is empty: on a tag the ref is the
+version, on a dispatch it is a branch, and release-preflight refuses `main` before anything is pushed.
+So a caller that offers dispatch passes both:
+
+```yaml
+    with:
+      dry_run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry_run }}
+      chart_version: ${{ github.event_name == 'workflow_dispatch' && inputs.chart_version || '' }}
+```
+
+with `dry_run` defaulting to `true` and an optional `chart_version` input. On a tag both are false or
+empty, and the tag decides; a mistyped dispatch rehearses; a dispatch without a version is refused with
+the reason.
 
 Migrating removes more than `release-tag.yaml`. A repository that adopted PUBLISHING.md rule 12 (its own
 `release-preflight.yaml` call) and rule 14 (pushing through the `chart-push` action) did so on purpose,

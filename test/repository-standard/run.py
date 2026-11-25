@@ -130,6 +130,8 @@ CASES = [
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"]))),
     ("R5 release-oci caller without packages: write", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"], "    with:\n      index_channel: none\n"))),
+    ("R5 dispatchable release-oci caller without chart_version", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH).replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n"))),
     ("R5 publish-chart called beside release-oci", "R5", NAME, lambda r: write(
         r, ".github/workflows/index.yaml", workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))),
     ("R5 release-preflight called beside release-oci", "R5", NAME, lambda r: write(
@@ -149,7 +151,7 @@ CASES = [
 ]
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
-ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 publish-chart called beside release-oci",
+ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 dispatchable release-oci caller without chart_version", "R5 publish-chart called beside release-oci",
             "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
             "R5 a repository-specific release-tag.yaml",
             "R8 no preflight-refs workflow"}
@@ -161,6 +163,8 @@ PASSES = [
     ("a Composition chart named after what it provisions, with source-repo", NAME, lambda r: (
         write(r, "chart/Chart.yaml", chart("acme-network") + f"annotations:\n  krateo.io/source-repo: https://github.com/krateo-blueprints/{NAME}\n"),
         write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
+    ("a dispatchable release-oci caller that passes chart_version", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH + "      chart_version: ${{ inputs.chart_version || '' }}\n").replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n"))),
     ("a test fixture's Chart.yaml is not a chart", NAME, lambda r: write(r, "test/fixtures/x/Chart.yaml", chart("x"))),
     ("a vendored subchart is not a chart", NAME, lambda r: write(r, "chart/charts/dep/Chart.yaml", chart("dep"))),
     ("a vendored subchart of the config chart is not a chart", NAME, lambda r: write(r, "config-chart/charts/dep/Chart.yaml", chart("dep"))),
