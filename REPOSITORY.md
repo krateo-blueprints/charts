@@ -151,7 +151,11 @@ Migrating removes more than `release-tag.yaml`. A repository that adopted PUBLIS
 and release-oci now does both. So migrating deletes, beside the call to release-oci: the
 `release-tag.yaml`, the `release-preflight.yaml` job, the `chart-push` push path and any
 `publish-chart.yaml` or index job. Kept, a conscientious caller publishes twice. Release assets and
-release notes stay top-level callers.
+release notes stay top-level callers. The release asset is named after the chart
+(`compositiondefinition-<chart>.yaml`), so a repository whose asset was named after a folder changes
+that file's name at its first release through release-oci, and a consumer that downloads it by name
+must follow. A publish-index log that says `not served yet` on its first poll, on a run that ends
+green, is the index's propagation: the step polls until the new version is served.
 
 **R6. The repository carries `LICENSE`, `README.md` and `.github/dependabot.yml` for the
 `github-actions` ecosystem.** Dependabot is what keeps the SHA pins of rule 9 current.
