@@ -59,7 +59,10 @@ one, with those failures fixed, left the gates disarmed. The same shape needs no
 check globbing `chart/assets/*.yaml` printed `0 assets` and exited 0 with every asset removed. So a
 repository names the paths R2 fixes (`chart/`, and `config-chart/` when there is one) instead of
 discovering them, makes an empty set an error in every gate that counts, and reads a gate's log for its
-count, not its exit code. The shared release already refuses an empty set.
+count, not its exit code. The shared release already refuses an empty set. Two more checks close it: the
+gate must also **bite** (a commit that reintroduces a known defect fails it; a gate that speaks may only
+have gone quiet somewhere new), and it must do both **in the run that gates the merge**. A repository
+held a script that refused an empty set in as many words, and no workflow ran it.
 
 **R3. `chart/` is named after the repository, `config-chart/` after it plus `-config`. A `chart/` that
 ships a Composition instead (it carries `compositiondefinition.yaml`) is named after what the Composition
