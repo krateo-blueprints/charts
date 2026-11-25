@@ -75995,6 +75995,30 @@ entries:
       krateo.io/maturity: alpha
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
+    created: "2026-11-25T19:59:28.546258376Z"
+    description: Krateo blueprint that provisions an isolated child Krateo in a vcluster
+      virtual cluster with a tenant admin and the OpenStack catalog.
+    digest: e45b99c2995313da8e69fafee9311eaa8a03a93bdb096635648303c2be1e208c
+    home: https://krateo.io
+    icon: https://raw.githubusercontent.com/krateoplatformops/krateo/main/docs/media/logo.svg
+    keywords:
+    - selfservice
+    - vcluster
+    - openstack
+    - blueprint
+    name: selfservice-krateo
+    sources:
+    - https://github.com/krateo-blueprints/krateo-selfservice-blueprint
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/selfservice-krateo-0.2.74/selfservice-krateo-0.2.74.tgz
+    version: 0.2.74
+  - annotations:
+      krateo.io/category: application
+      krateo.io/display-name: Self-Service Krateo
+      krateo.io/maturity: alpha
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
     created: "2026-11-25T13:34:31.56198545Z"
     description: Krateo blueprint that provisions an isolated child Krateo in a vcluster
       virtual cluster with a tenant admin and the OpenStack catalog.
@@ -83471,4 +83495,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-25T13:34:31.557784965Z"
+generated: "2026-11-25T19:59:28.5423013Z"
