@@ -108,7 +108,14 @@ the pin.** On a `X.Y.Z` tag the repository calls
 krateo-platformops/.github's `release-oci.yaml` with an explicit `index_channel`, and nothing else for the
 release: release-oci itself runs PUBLISHING.md's `release-preflight.yaml` (rule 12) before any push and,
 for a channel, `publish-chart.yaml` (rule 1) after it. A repository that also calls `publish-chart.yaml`
-or `release-preflight.yaml` beside release-oci runs them twice. There is no repository-specific
+or `release-preflight.yaml` beside release-oci runs them twice. The check is therefore a rule about the
+whole repository: a repository that releases through release-oci must not reference `publish-chart.yaml`,
+`release-preflight.yaml` or the `chart-push` action with `uses:` in any workflow, a test harness
+included. Reading the files (fetching `release-preflight.yaml` with `gh api` to compare it, say) is not
+a call and is not caught. R5 applies only to a repository that ships a chart (a `Chart.yaml` outside test,
+example and fixture directories); a repository with none has no R5 finding. `index_channel` and, on a
+dispatchable caller, `chart_version` must be given a value on their own line under `with:`; defining a
+`chart_version` input, or naming either key in a comment, is not passing it. There is no repository-specific
 `release-tag.yaml`: a fix to the shared release reaches every repository at once, and only if no
 repository has its own.
 
