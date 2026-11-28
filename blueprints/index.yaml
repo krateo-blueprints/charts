@@ -69931,6 +69931,39 @@ entries:
       krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: "2026.1"
+    created: "2026-11-28T10:05:26.356010633Z"
+    description: 'Krateo Operator Generator (KOG) packaging that turns OpenStack Keystone
+      identity resources (projects, users, roles, groups, domains, role assignments
+      and application credentials) into native Kubernetes custom resources, driven
+      by oasgen-provider + rest-dynamic-controller. '
+    digest: 0324abd0e43bec42c267b729ae7eba2ee1e6e392bd612daa1dc36958bfbc8dae
+    home: https://github.com/krateo-blueprints/openstack-keystone-operator-kog
+    icon: https://raw.githubusercontent.com/krateoplatformops/krateo/main/docs/media/logo.svg
+    keywords:
+    - krateo
+    - kog
+    - oasgen-provider
+    - openstack
+    - keystone
+    - identity
+    - security
+    - operator
+    maintainers:
+    - name: krateo
+    name: openstack-keystone-operator-kog
+    sources:
+    - https://github.com/krateo-blueprints/openstack-keystone-operator-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/openstack-keystone-operator-kog-0.4.3/openstack-keystone-operator-kog-0.4.3.tgz
+    version: 0.4.3
+  - annotations:
+      krateo.io/category: security
+      krateo.io/display-name: OpenStack Keystone KOG
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
+    apiVersion: v2
+    appVersion: "2026.1"
     created: "2026-11-18T03:44:19.044469409Z"
     description: 'Krateo Operator Generator (KOG) packaging that turns OpenStack Keystone
       identity resources (projects, users, roles, groups, domains, role assignments
@@ -83583,4 +83616,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-28T09:51:41.88959015Z"
+generated: "2026-11-28T10:05:26.354832568Z"
