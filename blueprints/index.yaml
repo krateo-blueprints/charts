@@ -70265,6 +70265,42 @@ entries:
       krateo.io/display-name: OpenStack Neutron KOG
       krateo.io/maturity: beta
       krateoSupportedVersion: '>= 2.5.1'
+      org.opencontainers.image.ref.name: 0.2.1
+      org.opencontainers.image.revision: af25bbe15710f3865949f20b94233ad6da9cf9f0
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/openstack-neutron-operator-kog
+      org.opencontainers.image.version: 0.2.1
+    apiVersion: v2
+    appVersion: 0.2.1
+    created: "2026-11-28T13:22:39.496119125Z"
+    description: 'Krateo Operator Generator (KOG) packaging that turns OpenStack Neutron
+      networking resources (networks, subnets, routers, ports, security groups and
+      floating IPs) into native Kubernetes custom resources, driven by oasgen-provider
+      + rest-dynamic-controller. '
+    digest: d265445b429ec71a424331a4e782b94a5ce27803f50119e210d6de97d59c4b75
+    home: https://github.com/krateo-blueprints/openstack-neutron-operator-kog
+    icon: https://raw.githubusercontent.com/krateoplatformops/krateo/main/docs/media/logo.svg
+    keywords:
+    - krateo
+    - kog
+    - oasgen-provider
+    - openstack
+    - neutron
+    - network
+    - operator
+    maintainers:
+    - name: krateo
+    name: openstack-neutron-operator-kog
+    sources:
+    - https://github.com/krateo-blueprints/openstack-neutron-operator-kog
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/openstack-neutron-operator-kog-0.2.1/openstack-neutron-operator-kog-0.2.1.tgz
+    version: 0.2.1
+  - annotations:
+      krateo.io/category: network
+      krateo.io/display-name: OpenStack Neutron KOG
+      krateo.io/maturity: beta
+      krateoSupportedVersion: '>= 2.5.1'
     apiVersion: v2
     appVersion: 0.1.0
     created: "2026-08-19T04:26:00.20768991Z"
@@ -83750,4 +83786,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-28T12:49:45.659651305Z"
+generated: "2026-11-28T13:22:39.495129114Z"
