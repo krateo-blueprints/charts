@@ -161,7 +161,7 @@ jobs:
           # [rule:R5]
           # R5 release: on a X.Y.Z tag, the shared release-oci with an explicit index_channel, which runs
           # release-preflight and publish-chart itself; no repository-specific release-tag workflow.
-          # A failure from charts 1.14.0 (issue #66); advisory before.
+          # A failure from charts 1.15.0 (issue #66); advisory before.
           # Only a repository that ships a chart (charts, above, leaves out test and example fixtures) has a
           # release to check.
           if charts:

@@ -101,7 +101,7 @@ placeholder substitutes it globally**: a substitution anchored to `version:` sil
 as the literal placeholder, and helm accepts that without a word. Charts whose version is a served API
 version (rule 4's second shape) keep literal versions; they belong to blueprint repositories.
 
-**R5. A release is the shared one. *Enforced from charts 1.14.0*: a repository that does not meet R5
+**R5. A release is the shared one. *Enforced from charts 1.15.0*: a repository that does not meet R5
 fails the check; it was advisory before. The migration steps and the state of each repository are in
 issue #66, and a repository that has not migrated stays at the checker it is pinned to until it moves
 the pin.** On a `X.Y.Z` tag the repository calls
