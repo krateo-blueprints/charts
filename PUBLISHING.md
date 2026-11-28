@@ -276,6 +276,11 @@ No release reported any of this.
      new release of a tagged reusable workflow arrives as a reviewed pull request in each repository
      rather than silently. That is how a fix like #5 or #6 still reaches everyone. A `# main
      YYYY-MM-DD` pin has no tag for Dependabot to follow; it is moved by hand, deliberately.
+     - **Dependabot's cooldown:** Dependabot applies a default 3-day cooldown to version updates. With
+       this repository's release cadence (several tags on some days), a caller is often moved only to the
+       newest version older than 3 days, not the newest. Being a few minors behind can be the automation
+       working, not a reason to hand-bump. Security updates skip the cooldown, but only when Dependabot
+       security updates are enabled ([REPOSITORY.md](REPOSITORY.md) R9).
      Three lessons from moving these pins (openstack-ironic-operator-kog, 2026-11-18):
      - **Record the command, not the output.** A pin's SHA appears exactly once, on its `uses:` line.
        The defect is a comment line holding a **40-hex SHA equal to a `uses:` pin's SHA in the same
