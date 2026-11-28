@@ -1,0 +1,51 @@
+name: test-chart-defaults
+
+# Self-test for the reusable chart-defaults.yaml (PUBLISHING.md rule 15). test/chart-defaults/run.py extracts
+# the workflow's own check and runs it against generated charts:
+#   - must pass: aligned charts (nested, $ref, 1 and 1.0, extra values keys, the CHART_VERSION placeholder,
+#     a vendored subchart's own drift);
+#   - must fail: a value mismatch, a missing values key, true against "true", true against 1, a $ref'd
+#     mismatch, a nested object mismatch, an array mismatch, null against [], a missing parent, the
+#     openstack-nova-operator-kog 0.1.10 shape, a chart with no values.schema.json, and a directory with no
+#     chart at all;
+#   - not compared: defaults under items, oneOf and additionalProperties are listed and do not fail;
+#   - then each marked rule block is replaced in turn, and the cases written for it must flip.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chart-defaults.yaml
+      - .github/workflows/test-chart-defaults.yaml
+      - test/chart-defaults/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chart-defaults.yaml
+      - .github/workflows/test-chart-defaults.yaml
+      - test/chart-defaults/**
+
+permissions:
+  contents: read
+
+jobs:
+  cases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Every case gets the verdict it should, and every rule fires
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          /tmp/venv/bin/python -I test/chart-defaults/run.py
+
+  # A real call through `uses:`, on a committed aligned chart, which rule 9 covers like any caller's.
+  this-repository:
+    uses: ./.github/workflows/chart-defaults.yaml
+    with:
+      working-directory: test/chart-defaults/fixtures/aligned

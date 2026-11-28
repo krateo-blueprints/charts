@@ -1,0 +1,252 @@
+name: chart-defaults
+
+# A chart's values.schema.json documents no default that values.yaml does not apply (PUBLISHING.md rule 15).
+#
+# Callers (every repository that ships a chart installed as a Krateo Composition):
+#
+#   jobs:
+#     chart-defaults:
+#       uses: krateo-blueprints/charts/.github/workflows/chart-defaults.yaml@<full SHA> # X.Y.Z
+#       with:
+#         working-directory: chart        # a chart, or a tree holding charts; defaults to the repository root
+#
+# core-provider generates a chart's CRD from values.schema.json, so a Composition gets the schema's
+# `default`. `helm install` never applies a schema default; it uses values.yaml. When the two disagree at
+# one path, the chart behaves differently as a Composition than under helm. openstack-nova-operator-kog
+# 0.1.10 had restdefinitions.quota.enabled with schema default false and values.yaml true
+# (krateo-platformops/core-provider#686).
+#
+# For every path reachable through `properties` that declares a `default`, values.yaml must have the same
+# value: same type (true is not "true") and same value (1 is 1.0), objects and arrays compared deeply. A
+# values.yaml key with no schema default is fine. A path the schema gives a default and values.yaml does
+# not have fails too: neither helm nor core-provider applies it.
+# Local $ref (#/definitions/..., #/$defs/...) is resolved. Defaults under items, oneOf, anyOf, allOf,
+# additionalProperties, patternProperties, if, then, else and not are listed as "not compared", never
+# guessed at and never failed.
+# A tree with no chart, a chart with no values.schema.json, and an unreadable file are errors: a check that
+# read nothing has checked nothing. Reads files only: no network, no token, no write.
+#
+# Why a reusable and not a step of repository-standard.yaml: that one reads a caller's layout (REPOSITORY.md,
+# provider and operator repositories only). This rule applies to every chart a Composition installs, in a
+# blueprint repository too, and a caller must be able to point it at one chart.
+#
+# Each rule is one marked block (`# [rule:name]` ... `# [/rule:name]`); test-chart-defaults.yaml replaces each
+# block in turn and requires the case that block exists for to flip, so no rule can stop firing unnoticed.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: A chart directory, or a directory holding charts, relative to the caller's checkout.
+        type: string
+        required: false
+        default: "."
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Check that schema defaults match values.yaml
+        env:
+          CHART_DIR: ${{ inputs.working-directory }}
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
+          /tmp/venv/bin/python -I - "$CHART_DIR" <<'PY'
+          import json, os, sys, urllib.parse
+          import yaml
+
+          ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
+          MISSING = object()
+          FIXTURE_DIRS = {"test", "tests", "testdata", "fixtures", "e2e", "example", "examples", "sample", "samples"}
+          # Keywords whose subschemas are not compared: which element, branch or key they describe is not decided here.
+          OTHER = ("items", "oneOf", "anyOf", "allOf", "additionalProperties", "patternProperties", "if", "then", "else", "not")
+
+
+          def js(v):
+              return json.dumps(v, sort_keys=True, default=str)
+
+
+          def deq(a, b):
+              # JSON-parsed default against YAML-parsed value: same type and same value; 1 and 1.0 are equal.
+              # [rule:strict-bool]
+              if isinstance(a, bool) or isinstance(b, bool):
+                  return isinstance(a, bool) and isinstance(b, bool) and a == b
+              # [/rule:strict-bool]
+              if isinstance(a, dict) and isinstance(b, dict):
+                  return a.keys() == b.keys() and all(deq(a[k], b[k]) for k in a)
+              if isinstance(a, list) and isinstance(b, list):
+                  return len(a) == len(b) and all(deq(x, y) for x, y in zip(a, b))
+              if isinstance(a, (dict, list)) or isinstance(b, (dict, list)):
+                  return False
+              if isinstance(a, (int, float)) and isinstance(b, (int, float)):
+                  return a == b
+              return type(a) is type(b) and a == b
+
+
+          def pointer(doc, ref):
+              node = doc
+              for part in ref[1:].lstrip("/").split("/") if ref != "#" else []:
+                  part = urllib.parse.unquote(part).replace("~1", "/").replace("~0", "~")
+                  if isinstance(node, dict) and part in node:
+                      node = node[part]
+                  elif isinstance(node, list) and part.isdigit() and int(part) < len(node):
+                      node = node[int(part)]
+                  else:
+                      return MISSING
+              return node
+
+
+          class Check:
+              def __init__(self, schema):
+                  self.schema = schema
+                  self.errors = []
+                  self.notes = []
+                  self.compared = 0
+                  self.ok = 0
+
+              def resolve(self, node, label, stack):
+                  # Returns (resolved node, stack extended by the refs expanded), or (None, stack) when it can't be.
+                  # [rule:ref]
+                  while isinstance(node, dict) and "$ref" in node:
+                      ref = node["$ref"]
+                      if not isinstance(ref, str) or not ref.startswith("#"):
+                          self.notes.append(f"{label}: $ref {js(ref)} is not local")
+                          return None, stack
+                      if ref in stack:
+                          self.notes.append(f"{label}: recursive $ref {ref}")
+                          return None, stack
+                      target = pointer(self.schema, ref)
+                      if not isinstance(target, dict):
+                          self.errors.append(f"{label}: $ref {ref} does not resolve in values.schema.json")
+                          return None, stack
+                      stack = stack + (ref,)
+                      merged = dict(target)
+                      merged.update({k: v for k, v in node.items() if k != "$ref"})
+                      node = merged
+                  # [/rule:ref]
+                  return node, stack
+
+              def uncompared(self, node, path, stack):
+                  # Every default under a keyword that is not compared is listed, with where it is.
+                  node, stack = self.resolve(node, path or "(root)", stack)
+                  if not isinstance(node, dict):
+                      return
+                  if "default" in node:
+                      self.notes.append(f"{path or '(root)'}: schema default {js(node['default'])}")
+                  for name, sub in (node.get("properties") or {}).items():
+                      self.uncompared(sub, f"{path}.{name}" if path else name, stack)
+                  for kw in OTHER:
+                      self.under(node, kw, path, stack)
+
+              def under(self, node, kw, path, stack):
+                  sub = node.get(kw)
+                  if kw in ("oneOf", "anyOf", "allOf") and isinstance(sub, list):
+                      for i, s in enumerate(sub):
+                          self.uncompared(s, f"{path}[{kw}/{i}]", stack)
+                  elif kw == "patternProperties" and isinstance(sub, dict):
+                      for pat, s in sub.items():
+                          self.uncompared(s, f"{path}[{kw}/{pat}]", stack)
+                  elif isinstance(sub, dict):
+                      self.uncompared(sub, f"{path}[{kw}]", stack)
+                  elif isinstance(sub, list):
+                      for i, s in enumerate(sub):
+                          self.uncompared(s, f"{path}[{kw}/{i}]", stack)
+
+              def walk(self, node, path, cur, stack=()):
+                  label = path or "(root)"
+                  node, stack = self.resolve(node, label, stack)
+                  if not isinstance(node, dict):
+                      return
+                  if "default" in node:
+                      self.compared += 1
+                      want = node["default"]
+                      if cur is MISSING:
+                          # [rule:missing-key]
+                          self.errors.append(f"{label}: schema default {js(want)}, values.yaml has no key")
+                          # [/rule:missing-key]
+                          pass
+                      elif not deq(want, cur):
+                          self.errors.append(f"{label}: schema default {js(want)} != values.yaml {js(cur)}")
+                      else:
+                          self.ok += 1
+                  for name, sub in (node.get("properties") or {}).items():
+                      child = cur[name] if isinstance(cur, dict) and name in cur else MISSING
+                      self.walk(sub, f"{path}.{name}" if path else name, child, stack)
+                  for kw in OTHER:
+                      self.under(node, kw, path, stack)
+
+
+          def find_charts(root):
+              if os.path.isfile(os.path.join(root, "Chart.yaml")) or os.path.isfile(os.path.join(root, "values.schema.json")):
+                  return [root]
+              found = []
+              for dp, dns, fns in os.walk(root):
+                  dns[:] = sorted(d for d in dns if d != ".git" and d not in FIXTURE_DIRS)
+                  if "Chart.yaml" in fns:
+                      found.append(dp)
+                      dns[:] = []  # what is inside a chart is its own: a vendored subchart is not a chart of this tree
+              return found
+
+
+          def main():
+              if not os.path.isdir(ROOT):
+                  print(f"error: {ROOT} is not a directory")
+                  return 2
+              charts = find_charts(ROOT)
+              if not charts:
+                  print(f"error: no chart (Chart.yaml) under {ROOT}; a check that read nothing has checked nothing")
+                  return 2
+              bad = False
+              totals = [0, 0, 0]
+              for c in charts:
+                  name = os.path.relpath(c, ROOT)
+                  sp = os.path.join(c, "values.schema.json")
+                  vp = os.path.join(c, "values.yaml")
+                  if not os.path.isfile(sp):
+                      print(f"{name}: error: no values.schema.json (core-provider generates the CRD from it)")
+                      bad = True
+                      continue
+                  try:
+                      with open(sp, encoding="utf-8") as f:
+                          schema = json.load(f)
+                      values = {}
+                      if os.path.isfile(vp):
+                          with open(vp, encoding="utf-8") as f:
+                              values = yaml.safe_load(f)
+                          if values is None:
+                              values = {}
+                  except (OSError, ValueError, yaml.YAMLError) as e:
+                      print(f"{name}: error: cannot read the chart's values: {e}")
+                      bad = True
+                      continue
+                  if not isinstance(schema, dict):
+                      print(f"{name}: error: values.schema.json is not an object")
+                      bad = True
+                      continue
+                  chk = Check(schema)
+                  chk.walk(schema, "", values)
+                  for e in chk.errors:
+                      print(f"{name}: {e}")
+                  for n in chk.notes:
+                      print(f"{name}: not compared: {n}")
+                  print(f"{name}: {chk.compared} compared, {len(chk.notes)} not compared, {chk.ok} OK, {len(chk.errors)} failing")
+                  if chk.errors:
+                      bad = True
+                  totals[0] += chk.compared
+                  totals[1] += len(chk.notes)
+                  totals[2] += chk.ok
+              print(f"{len(charts)} chart(s): {totals[0]} compared, {totals[1]} not compared, {totals[2]} OK"
+                    + (": FAILED" if bad else ": schema defaults match values.yaml"))
+              return 1 if bad else 0
+
+
+          sys.exit(main())
+          PY
