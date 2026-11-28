@@ -200,7 +200,15 @@ NO_R5 = [
     ("the only Chart.yaml is in a test fixture directory", NAME, lambda r: (
         rm(r, "chart"), rm(r, "config-chart"), rm(r, ".github/workflows/release-oci.yaml"),
         write(r, "test/fixtures/x/Chart.yaml", chart("x")))),
-    ("no chart, and a release-tag.yaml", NAME, lambda r: (
+]
+
+# No discovered chart but a release-tag.yaml: R5 is skipped, so it only warns (R2 fails on its own for want of a
+# chart, which is not R5's doing). Without a release-tag.yaml, NO_R5 above holds: nothing at all.
+WARN_R5 = [
+    ("the only Chart.yaml is under examples/, and a release-tag.yaml exists", NAME, lambda r: (
+        rm(r, "chart"), rm(r, "config-chart"), rm(r, ".github/workflows/release-oci.yaml"),
+        write(r, "examples/x/Chart.yaml", chart("x")), write(r, ".github/workflows/release-tag.yaml", "on:\n  push:\n"))),
+    ("no chart at all, and a release-tag.yaml exists", NAME, lambda r: (
         rm(r, "chart"), rm(r, "config-chart"), write(r, ".github/workflows/release-tag.yaml", "on:\n  push:\n"))),
 ]
 
@@ -277,6 +285,12 @@ def main():
         print(f"{'ok  ' if ok else 'FAIL'} no R5:   {label} -> {rules_in(out)}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
+    for label, name, mutate in WARN_R5:
+        rc, out = run(check, name, mutate)
+        ok = "R5" not in rules_in(out) and "R5" in warned_in(out)
+        print(f"{'ok  ' if ok else 'FAIL'} warns R5: {label} -> failures {rules_in(out)}, warnings {warned_in(out)}")
+        if not ok:
+            bad.append(label); print(textwrap.indent(out, "      "))
     for label, name, mutate, want in R9_NOTICES:
         rc, out = run(check, name, mutate)
         got = out.count(NOTICE)
@@ -300,6 +314,12 @@ def main():
             print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' passes silently")
             if not ok:
                 bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
+        for label, name, mutate in WARN_R5 if rule == "R5" else []:
+            rc, out = run(cut, name, mutate)
+            ok = "R5" not in warned_in(out) + rules_in(out)
+            print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' does not warn")
+            if not ok:
+                bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
         for label, name, mutate, want in R9_NOTICES if rule == "R9" else []:
             if want:
                 rc, out = run(cut, name, mutate)
@@ -310,7 +330,7 @@ def main():
     if bad:
         print(f"\n{len(bad)} expectation(s) failed")
         sys.exit(1)
-    print(f"\nall {len(PASSES) + len(CASES) + len(NO_R5) + len(R9_NOTICES)} cases and {len(blocks)} rule deletions hold")
+    print(f"\nall {len(PASSES) + len(CASES) + len(NO_R5) + len(WARN_R5) + len(R9_NOTICES)} cases and {len(blocks)} rule deletions hold")
 
 
 if __name__ == "__main__":

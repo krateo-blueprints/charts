@@ -185,6 +185,8 @@ jobs:
                           fail("R5", f"a workflow calls {path} beside release-oci, which already runs it; remove the call")
               if "release-tag.yaml" in workflows:
                   fail("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
+          elif "release-tag.yaml" in workflows:
+              warn("R5", "no chart was discovered, but .github/workflows/release-tag.yaml exists. If this repository ships a chart, it sits in a directory chart discovery skips (test, e2e, examples, samples, fixtures), and R5 was not checked.")
           # [/rule:R5]
 
           # [rule:R6]

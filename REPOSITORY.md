@@ -115,7 +115,7 @@ included. Reading the files (fetching `release-preflight.yaml` with `gh api` to 
 a call and is not caught. R5 applies only to a repository that ships a chart (a `Chart.yaml` outside test,
 example and fixture directories); a repository with none has no R5 finding. `index_channel` and, on a
 dispatchable caller, `chart_version` must be given a value on their own line under `with:`; defining a
-`chart_version` input, or naming either key in a comment, is not passing it. There is no repository-specific
+`chart_version` input, or naming either key in a comment, is not passing it. These conditions are checked per workflow file, not per job, so "the caller grants `packages: write`" means the calling file contains it; put the permission on the job that calls release-oci. A repository with no discovered chart but a `release-tag.yaml` gets an advisory, because its chart may sit in a directory discovery skips. There is no repository-specific
 `release-tag.yaml`: a fix to the shared release reaches every repository at once, and only if no
 repository has its own.
 
