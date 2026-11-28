@@ -5,14 +5,16 @@ Runs the workflow's OWN check (the `python3 -I - <<'PY'` heredoc, extracted from
 generated repository trees:
   - a repository that conforms passes;
   - each case breaks exactly one rule and must fail with that rule's id, and only that one; a case for an
-    advisory rule (REPOSITORY.md: R5, R8's reference check) must pass and warn with that rule's id;
+    advisory rule (REPOSITORY.md: R5, R8's reference check, R9) must pass and warn with that rule's id;
   - a Chart.yaml under a test fixture or a vendored subchart (chart/charts/<x>/) is not a chart of the
     repository, so it must not trip R2; a top-level charts/<name>/ IS one, in the wrong place, and must;
+  - R9 reads a response file (REPO_API) the cases write: an absent security_and_analysis field is one
+    notice and never a pass, and a repository that does not publish gets nothing;
   - then every marked rule block (`# [rule:Rn]` ... `# [/rule:Rn]`) is deleted in turn, and each case
     that block exists for must flip to passing. Every rule has at least one case.
 Exit 0 only if every expectation holds.
 """
-import os, re, shutil, subprocess, sys, tempfile, textwrap
+import json, os, re, shutil, subprocess, sys, tempfile, textwrap
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 WF = os.path.join(HERE, "..", "..", ".github", "workflows", "repository-standard.yaml")
@@ -81,6 +83,19 @@ def conforming(root):
     write(root, ".github/workflows/lint.yaml", workflow(USES["lint"]))
     write(root, ".github/workflows/security.yml", workflow(USES["security"]))
     write(root, ".github/workflows/release-notes.yaml", workflow(USES["notes"]))
+    write(root, API, api("enabled", "enabled"))
+
+
+# The GET /repos/{owner}/{repo} response the check reads (REPO_API). Without security_and_analysis it is
+# what a token without admin rights gets.
+API = ".repo-api.json"
+
+
+def api(scanning=None, push=None):
+    if scanning is None and push is None:
+        return json.dumps({"name": NAME})
+    return json.dumps({"name": NAME, "security_and_analysis": {
+        "secret_scanning": {"status": scanning}, "secret_scanning_push_protection": {"status": push}}})
 
 
 def rm(root, rel):
@@ -145,6 +160,8 @@ CASES = [
     ("R6 Dependabot without github-actions", "R6", NAME, lambda r: write(
         r, ".github/dependabot.yml", "version: 2\nupdates:\n  - package-ecosystem: pip\n")),
     ("R7 docs bundle missing one page", "R7", NAME, lambda r: rm(r, "docs/api.md")),
+    ("R9 publishing repository with secret scanning disabled", "R9", NAME, lambda r: write(r, API, api("disabled", "enabled"))),
+    ("R9 publishing repository with push protection disabled", "R9", NAME, lambda r: write(r, API, api("enabled", "disabled"))),
     ("R8 no pinned-uses", "R8", NAME, lambda r: write(
         r, ".github/workflows/lint.yaml", workflow([u for u in USES["lint"] if "pinned-uses" not in u]))),
     ("R8 no preflight-refs workflow", "R8", NAME, lambda r: rm(r, ".github/workflows/preflight-refs.yaml")),
@@ -154,7 +171,8 @@ CASES = [
 ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 dispatchable release-oci caller without chart_version", "R5 publish-chart called beside release-oci",
             "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
             "R5 a repository-specific release-tag.yaml",
-            "R8 no preflight-refs workflow"}
+            "R8 no preflight-refs workflow",
+            "R9 publishing repository with secret scanning disabled", "R9 publishing repository with push protection disabled"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
 PASSES = [
@@ -171,12 +189,32 @@ PASSES = [
 ]
 
 
+NOTICE = "::notice::R9 can't be read"
+# (case, repository name, mutation, notices expected): R9 is unread, never passed, when the field is
+# absent, and says nothing at all when the repository does not publish.
+R9_NOTICES = [
+    ("R9 publishing repository, field absent: one notice", NAME, lambda r: write(r, API, api()), 1),
+    ("R9 publishing repository, no API response at all: one notice", NAME, lambda r: rm(r, API), 1),
+    ("R9 publishing repository, field enabled: nothing", NAME, lambda r: None, 0),
+    ("R9 a repository that does not publish, field absent: nothing", NAME, lambda r: (
+        write(r, API, api()), rm(r, ".github/workflows/release-oci.yaml")), 0),
+    ("R9 a repository that does not publish, field disabled: nothing", NAME, lambda r: (
+        write(r, API, api("disabled", "disabled")), rm(r, ".github/workflows/release-oci.yaml")), 0),
+    ("R9 publish-chart.yaml counts as publishing", NAME, lambda r: (
+        write(r, API, api()), write(r, ".github/workflows/release-oci.yaml",
+                                    workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))), 1),
+]
+
+
 def run(check, name, mutate):
     root = tempfile.mkdtemp()
     try:
         conforming(root)
         mutate(root)
-        p = subprocess.run([sys.executable, "-I", "-c", check], env={"ROOT": root, "REPO_NAME": name, "PATH": os.environ["PATH"]},
+        env = {"ROOT": root, "REPO_NAME": name, "PATH": os.environ["PATH"]}
+        if os.path.exists(os.path.join(root, API)):
+            env["REPO_API"] = os.path.join(root, API)
+        p = subprocess.run([sys.executable, "-I", "-c", check], env=env,
                            capture_output=True, text=True)
         return p.returncode, p.stdout + p.stderr
     finally:
@@ -212,6 +250,13 @@ def main():
             print(f"{'ok  ' if ok else 'FAIL'} refuses: {label} -> {got}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
+    for label, name, mutate, want in R9_NOTICES:
+        rc, out = run(check, name, mutate)
+        got = out.count(NOTICE)
+        ok = rc == 0 and got == want and "R9" not in warned_in(out) + rules_in(out)
+        print(f"{'ok  ' if ok else 'FAIL'} notices: {label} -> {got}")
+        if not ok:
+            bad.append(label); print(textwrap.indent(out, "      "))
     # Each rule block, deleted, must let every case written for it pass.
     blocks = sorted(set(re.findall(r"# \[rule:(R\d+)\]", check)))
     for rule in blocks:
@@ -228,10 +273,17 @@ def main():
             print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' passes silently")
             if not ok:
                 bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
+        for label, name, mutate, want in R9_NOTICES if rule == "R9" else []:
+            if want:
+                rc, out = run(cut, name, mutate)
+                ok = rc == 0 and NOTICE not in out
+                print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' prints no notice")
+                if not ok:
+                    bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
     if bad:
         print(f"\n{len(bad)} expectation(s) failed")
         sys.exit(1)
-    print(f"\nall {len(PASSES) + len(CASES)} cases and {len(blocks)} rule deletions hold")
+    print(f"\nall {len(PASSES) + len(CASES) + len(R9_NOTICES)} cases and {len(blocks)} rule deletions hold")
 
 
 if __name__ == "__main__":

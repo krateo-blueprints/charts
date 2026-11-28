@@ -8,7 +8,8 @@ name: repository-standard
 #     repository-standard:
 #       uses: krateo-blueprints/charts/.github/workflows/repository-standard.yaml@<full SHA> # X.Y.Z
 #
-# It reads files only: no network, no token, no write. Each rule is one marked block
+# It reads the checkout, plus one read-only GET of the caller's repository (rule R9); it writes
+# nothing. Each rule is one marked block
 # (`# [rule:Rn]` ... `# [/rule:Rn]`); test-repository-standard.yaml deletes each block in turn and
 # requires the case that block exists for to flip, so no rule can stop firing unnoticed.
 
@@ -31,13 +32,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      # R9's input. security_and_analysis is returned only to a caller with admin rights, which this
+      # token does not have, so the field is usually absent: the check says so and never passes on it.
+      - name: Read the repository's settings
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: gh api "repos/$REPO" > "$RUNNER_TEMP/repo.json" || echo '{}' > "$RUNNER_TEMP/repo.json"
       - name: Check the repository standard
         env:
           REPO_NAME: ${{ inputs.repository || github.event.repository.name }}
+          REPO_API: ${{ runner.temp }}/repo.json
           ROOT: .
         run: |
           python3 -I - <<'PY'
-          import os, re, sys
+          import json, os, re, sys
 
           ROOT = os.environ["ROOT"]
           NAME = os.environ["REPO_NAME"]
@@ -207,6 +216,34 @@ jobs:
           if "preflight-refs.yaml" not in workflows:
               warn("R8", "missing the live reference check, .github/workflows/preflight-refs.yaml")
           # [/rule:R8]
+
+          # [rule:R9]
+          # R9 secrets: a repository that publishes charts has secret scanning and push protection on.
+          # Advisory: security_and_analysis is returned only to an admin, so with this token it is usually
+          # absent, and then the rule is unread (one notice), never passed. REPO_API is the GET
+          # /repos/{owner}/{repo} response, a file, so a test can feed it.
+          def repo_api():
+              try:
+                  with open(os.environ["REPO_API"], encoding="utf-8") as f:
+                      return json.load(f)
+              except (KeyError, OSError, ValueError):
+                  return {}
+
+          PUBLISHERS = ("krateo-platformops/.github/.github/workflows/release-oci.yaml",
+                        "krateo-blueprints/charts/.github/workflows/publish-chart.yaml")
+          if any(calls(p) for p in PUBLISHERS):
+              resp = repo_api()
+              sa = resp.get("security_and_analysis") if isinstance(resp, dict) else None
+              if not isinstance(sa, dict):
+                  print("::notice::R9 can't be read with this token (security_and_analysis is returned only to an "
+                        "admin): an admin checks it with gh api repos/<owner>/<repo> --jq '.security_and_analysis | "
+                        "{secret_scanning, secret_scanning_push_protection, dependabot_security_updates}'")
+              else:
+                  off = [k for k in ("secret_scanning", "secret_scanning_push_protection")
+                         if not isinstance(sa.get(k), dict) or sa[k].get("status") != "enabled"]
+                  if off:
+                      warn("R9", "the repository publishes charts and does not have enabled: " + ", ".join(off))
+          # [/rule:R9]
 
           for w in warnings:
               print(f"  {w}")

@@ -179,6 +179,31 @@ green, is the index's propagation: the step polls until the new version is serve
 `.github/workflows/preflight-refs.yaml`. *The reference check is advisory until it is a shared reusable
 here*: one copy per repository would drift, so the check warns about it and does not fail.
 
+**R9. A repository that publishes charts has secret scanning and push protection on, and Dependabot
+security updates.** *Advisory: CI can't read the setting.* A repository publishes when a workflow calls
+krateo-platformops/.github's `release-oci.yaml` or this repository's `publish-chart.yaml`, because
+publishing implies publish credentials reach its workflows. [PUBLISHING.md](PUBLISHING.md)'s SHA pins
+protect a caller against a moved tag, but a credential committed to a publishing repository is the same
+threat from the other side. Push protection refuses such a push, where scanning only reports it after the
+fact. Security updates are the only Dependabot updates that skip its default cooldown (see PUBLISHING.md
+rule 9), and only while they are on.
+
+`security_and_analysis` on `GET /repos/{owner}/{repo}` is returned only to a caller with admin rights, and
+the workflow's `GITHUB_TOKEN` has none. So the check warns when it can read the field and finds
+`secret_scanning` or `secret_scanning_push_protection` not `enabled`, and when the field is absent it
+prints one notice that R9 was not read. **An absent field is not a pass**: an admin checks it, with
+
+```sh
+gh api repos/<owner>/<repo> --jq '.security_and_analysis | {secret_scanning, secret_scanning_push_protection, dependabot_security_updates}'
+```
+
+and enables security updates with two calls, in this order (the second returns 422 without the first):
+
+```sh
+gh api -X PUT repos/<owner>/<repo>/vulnerability-alerts
+gh api -X PUT repos/<owner>/<repo>/automated-security-fixes
+```
+
 ## Checking a repository
 
 ```yaml
@@ -187,7 +212,7 @@ jobs:
     uses: krateo-blueprints/charts/.github/workflows/repository-standard.yaml@<full SHA> # X.Y.Z
 ```
 
-It reads the caller's checkout only: no network, no token, no write. It prints every deviation with its
+It reads the caller's checkout and, for R9, one read-only `GET /repos/{owner}/{repo}`; it writes nothing. It prints every deviation with its
 rule and exits 1 if there is one. `test-repository-standard.yaml` proves each rule fires: it deletes each
 rule's block in turn and requires the case written for it to flip.
 
