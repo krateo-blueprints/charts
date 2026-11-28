@@ -76085,6 +76085,68 @@ entries:
     urls:
     - https://github.com/krateo-blueprints/charts/releases/download/redis-0.3.37/redis-0.3.37.tgz
     version: 0.3.37
+  rook-ceph-cluster:
+  - annotations:
+      krateo.io/category: storage
+      org.opencontainers.image.ref.name: 0.1.0
+      org.opencontainers.image.revision: 5cf5386ae8123f293034f832a753dfed3706115e
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/rook-ceph-blueprint
+      org.opencontainers.image.version: 0.1.0
+    apiVersion: v2
+    appVersion: 1.21.3
+    created: "2026-11-28T11:27:33.89337879Z"
+    description: A Ceph cluster for OpenStack as Rook custom resources only (CephCluster,
+      CephBlockPool, CephClient) and the read grant the OpenStack blueprint's key
+      copies need, as a Krateo blueprint.
+    digest: eae3fc9500ed5c5628b2f8876adf7c9b1d9092b3c6c1e443bcf4070cc94686d4
+    home: https://github.com/krateo-blueprints/rook-ceph-blueprint
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - rook
+    - ceph
+    - storage
+    - openstack
+    maintainers:
+    - name: krateo
+    name: rook-ceph-cluster
+    sources:
+    - https://github.com/krateo-blueprints/rook-ceph-blueprint
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/rook-ceph-cluster-0.1.0/rook-ceph-cluster-0.1.0.tgz
+    version: 0.1.0
+  rook-operator:
+  - annotations:
+      krateo.io/category: storage
+      krateo.io/upstream: rook/rook v1.21.3
+      org.opencontainers.image.ref.name: 0.1.0
+      org.opencontainers.image.revision: 5cf5386ae8123f293034f832a753dfed3706115e
+      org.opencontainers.image.source: https://github.com/krateo-blueprints/rook-ceph-blueprint
+      org.opencontainers.image.version: 0.1.0
+    apiVersion: v2
+    appVersion: 1.21.3
+    created: "2026-11-28T11:27:34.524102201Z"
+    description: The Rook Ceph operator and its CustomResourceDefinitions, vendored
+      from Rook's release manifests, as a Krateo blueprint.
+    digest: 9b43c2a8cf449a15f25b33e7c372dc51ab0b89de5cd86c09d8f6d5cf4dc2b8aa
+    home: https://github.com/krateo-blueprints/rook-ceph-blueprint
+    icon: https://raw.githubusercontent.com/krateo-platformops/.github/main/brand/logo.svg
+    keywords:
+    - rook
+    - ceph
+    - storage
+    - operator
+    maintainers:
+    - name: krateo
+    name: rook-operator
+    sources:
+    - https://github.com/krateo-blueprints/rook-ceph-blueprint
+    - https://github.com/rook/rook
+    type: application
+    urls:
+    - https://github.com/krateo-blueprints/charts/releases/download/rook-operator-0.1.0/rook-operator-0.1.0.tgz
+    version: 0.1.0
   selfservice-krateo:
   - annotations:
       krateo.io/category: application
@@ -83616,4 +83678,4 @@ entries:
     urls:
     - https://krateo-blueprints.github.io/charts/blueprints/zaqar-0.2.0.tgz
     version: 0.2.0
-generated: "2026-11-28T10:05:26.354832568Z"
+generated: "2026-11-28T11:27:34.520081861Z"
