@@ -1,0 +1,4 @@
+apiVersion: v2
+name: acme
+version: CHART_VERSION
+appVersion: CHART_VERSION

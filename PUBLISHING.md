@@ -562,6 +562,40 @@ No release reported any of this.
       - It can't tell an `oras push` of a chart from one of another artifact, so a non-chart
         `oras push` is decided here first.
 
+15. **A chart's schema documents no default that values.yaml does not apply.** Krateo's
+    core-provider generates a chart's CRD from `values.schema.json`, so a Composition gets the
+    schema's `default`. `helm install` never applies a schema default; it uses `values.yaml`. When
+    the two disagree at one path, the same chart behaves differently installed as a Composition and
+    installed with helm. openstack-nova-operator-kog 0.1.10 had `restdefinitions.quota.enabled` with
+    schema default `false` and `values.yaml` `true` (krateo-platformops/core-provider#686).
+    core-provider will take defaults from `values.yaml`; this rule still refuses the drift at PR
+    time, so the schema never documents a default nobody applies.
+    - **The check:** for every path reachable through `properties` that declares a `default`,
+      `values.yaml` must hold the same value, compared by type and value (`true` is not `"true"`,
+      `true` is not `1`, `1` is `1.0`), objects and arrays deeply. A path with a default and no key in
+      `values.yaml` fails too: neither helm nor core-provider applies it, so put it in `values.yaml`
+      or take it out of the schema. A `values.yaml` key with no schema default is fine. The literal
+      `CHART_VERSION` placeholder (rule 4) is a string like any other and equal placeholders are equal.
+    - **What is not compared:** local `$ref` (`#/definitions/...`, `#/$defs/...`) is resolved. A
+      default under `items`, `oneOf`, `anyOf`, `allOf`, `additionalProperties`, `patternProperties`,
+      `if`, `then`, `else` or `not` is listed as "not compared" and never fails: which element or branch
+      it describes is not decided here, and guessing would fail charts for the wrong reason.
+    - **An empty input fails:** a chart with no `values.schema.json`, and a directory with no chart,
+      are errors, not skips. A chart that is not installed as a Composition does not call the check on
+      itself.
+    - **Calling it:** `chart-defaults.yaml`, pinned like any reusable (rule 9), with
+      `working-directory` set to a chart or to a tree of charts. It reads files only; PyYAML is
+      installed with `pip install --require-hashes`, so the download is pinned like the workflow.
+    - **Rolling it out:** `enforce` (default `true`) fails the job on drift. `enforce: false`
+      reports drift, and a chart with no `values.schema.json`, as `::warning::` annotations on the
+      schema file and passes, for a repository that has drift today. GitHub does not allow
+      `continue-on-error` on a job that calls a reusable, so the mode is an input. A directory with
+      no chart still fails in both modes, because an empty input never passes. A repository calls it
+      warn-only while it has drift, fixes the paths, and then drops `enforce: false`.
+    - **Tests:** `test-chart-defaults.yaml` with must-pass and must-fail charts, the nova 0.1.10
+      shape among them, the warn-only cases, two real `uses:` calls (enforcing on an aligned chart,
+      warn-only on the nova shape), and each rule block replaced in turn.
+
 ## Scope
 
 This standard covers every repository in the krateo-blueprints organisation. builder-scaffold also

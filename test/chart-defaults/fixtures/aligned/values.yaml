@@ -1,0 +1,4 @@
+replicas: 1
+restdefinitions:
+  quota:
+    enabled: true

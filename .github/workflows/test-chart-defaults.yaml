@@ -1,0 +1,71 @@
+name: test-chart-defaults
+
+# Self-test for the reusable chart-defaults.yaml (PUBLISHING.md rule 15). test/chart-defaults/run.py extracts
+# the workflow's own check and runs it against generated charts:
+#   - must pass: aligned charts (nested, $ref, 1 and 1.0, extra values keys, the CHART_VERSION placeholder,
+#     a vendored subchart's own drift);
+#   - must fail: a value mismatch, a missing values key, true against "true", true against 1, a $ref'd
+#     mismatch, a nested object mismatch, an array mismatch, null against [], a missing parent, the
+#     openstack-nova-operator-kog 0.1.10 shape, a chart with no values.schema.json, and a directory with no
+#     chart at all;
+#   - not compared: defaults under items, oneOf and additionalProperties are listed and do not fail;
+#   - warn-only (enforce false): the nova shape passes with the drift as a ::warning::, a directory with no chart
+#     still fails, and a second real `uses:` call runs it on the nova fixture;
+#   - then each marked rule block is replaced in turn, and the cases written for it must flip.
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/chart-defaults.yaml
+      - .github/workflows/test-chart-defaults.yaml
+      - test/chart-defaults/**
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/chart-defaults.yaml
+      - .github/workflows/test-chart-defaults.yaml
+      - test/chart-defaults/**
+
+permissions:
+  contents: read
+
+jobs:
+  cases:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Every case gets the verdict it should, and every rule fires
+        run: |
+          set -euo pipefail
+          python3 -m venv /tmp/venv
+          cat > /tmp/requirements.txt <<'REQ'
+          pyyaml==6.0.2 \
+            --hash=sha256:ec031d5d2feb36d1d1a24380e4db6d43695f3748343d99434e6f5f9156aaa2ed \
+            --hash=sha256:3ad2a3decf9aaba3d29c8f537ac4b243e36bef957511b4766cb0057d32b0be85 \
+            --hash=sha256:80bab7bfc629882493af4aa31a4cfa43a4c57c83813253626916b8c7ada83476 \
+            --hash=sha256:70b189594dbe54f75ab3a1acec5f1e3faa7e8cf2f1e08d9b561cb41b845f69d5 \
+            --hash=sha256:9056c1ecd25795207ad294bcf39f2db3d845767be0ea6e6a34d856f006006083 \
+            --hash=sha256:3b1fdb9dc17f5a7677423d508ab4f243a726dea51fa5e70992e59a7411c89d19 \
+            --hash=sha256:d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
+          REQ
+          /tmp/venv/bin/pip install --quiet --require-hashes -r /tmp/requirements.txt
+          /tmp/venv/bin/python -I test/chart-defaults/run.py
+
+  # A real call through `uses:`, on a committed aligned chart, which rule 9 covers like any caller's.
+  this-repository:
+    uses: ./.github/workflows/chart-defaults.yaml
+    with:
+      working-directory: test/chart-defaults/fixtures/aligned
+
+  # The same call with enforce: false on the nova 0.1.10 shape, which has drift: it must succeed, with the
+  # drift as a warning annotation.
+  this-repository-warn-only:
+    uses: ./.github/workflows/chart-defaults.yaml
+    with:
+      working-directory: test/chart-defaults/fixtures/nova-operator-kog-0.1.10
+      enforce: false

@@ -1,0 +1,19 @@
+{
+  "type": "object",
+  "properties": {
+    "restdefinitions": {
+      "type": "object",
+      "properties": {
+        "quota": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        }
+      }
+    }
+  }
+}
