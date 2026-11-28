@@ -251,7 +251,7 @@ jobs:
             url="${RELEASES_BASE}/${base}/${base}.tgz"
             ok=""
             for attempt in 1 2 3 4 5 6; do
-              if curl -fsSL -o /dev/null "$url"; then ok=yes; break; fi
+              if curl -fsSL --connect-timeout 10 --max-time 30 -o /dev/null "$url"; then ok=yes; break; fi
               sleep $(( attempt * 5 ))
             done
             [ -n "$ok" ] || { echo "::error::${url} is not anonymously downloadable"; exit 1; }
@@ -329,7 +329,7 @@ jobs:
           # must not read as one that lacks nothing.
           missing=("${want[@]}")
           for attempt in $(seq 1 20); do
-            curl -fsSL "${REPO_URL}/index.yaml?nocache=$(date +%s)" -o served.yaml || { sleep 30; continue; }
+            curl -fsSL --connect-timeout 10 --max-time 30 "${REPO_URL}/index.yaml?nocache=$(date +%s)" -o served.yaml || { sleep 30; continue; }
             missing=()
             for nv in "${want[@]}"; do
               n="${nv%%=*}"; v="${nv#*=}"

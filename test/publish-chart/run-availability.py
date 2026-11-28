@@ -40,9 +40,11 @@ def step(name):
 
 # The stand-ins fail when a credential reaches them, so a pass also proves the check ran without one.
 CURL = r'''#!/usr/bin/env bash
-out=""; url=""
-while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;; -H*|-u*|--user*|--header*|-n|--netrc*) echo "credential option $1" >&2; exit 9;; -*) shift;; *) url="$1"; shift;; esac; done
-echo "curl $url" >> "$LOG"
+out=""; url=""; ct=""; mt=""
+while [ $# -gt 0 ]; do case "$1" in -o) out="$2"; shift 2;; --connect-timeout) ct="$2"; shift 2;; --max-time) mt="$2"; shift 2;; -H*|-u*|--user*|--header*|-n|--netrc*) echo "credential option $1" >&2; exit 9;; -*) shift;; *) url="$1"; shift;; esac; done
+echo "curl $url connect-timeout=$ct max-time=$mt" >> "$LOG"
+# A connection that stalls: real curl gives up at --max-time (exit 28); without one it never returns.
+if [ -n "${HANG:-}" ]; then [ -n "$mt" ] && exit 28; exec tail -f /dev/null; fi
 case "$url" in
   */index.yaml*) [ -z "${INDEX_DOWN:-}" ] || exit 22; cp "$INDEX" "$out" ;;
   *) case "$url" in *"${TARBALL_DOWN:-/none/}"*) exit 22 ;; esac; : > "$out" ;;
@@ -55,7 +57,7 @@ echo "helm $*" >> "$LOG"
 '''
 
 
-def run(shell, env, served):
+def run(shell, env, served, timeout=300):
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(os.path.join(tmp, "dist"))
         for n, v in CHARTS:
@@ -75,7 +77,7 @@ def run(shell, env, served):
         open(log, "w").close()
         e = dict(os.environ, PATH=b + os.pathsep + os.environ["PATH"], LOG=log, INDEX=index, CHANNEL="operators",
                  GH_TOKEN="stand-in", RELEASES_BASE="https://store.invalid", REPO_URL="https://index.invalid/operators", **env)
-        r = subprocess.run(["bash", "-c", shell], cwd=tmp, env=e, capture_output=True, text=True, timeout=300)
+        r = subprocess.run(["bash", "-c", shell], cwd=tmp, env=e, capture_output=True, text=True, timeout=timeout)
         return r.returncode, r.stdout + r.stderr, open(log).read()
 
 
@@ -120,6 +122,23 @@ def main():
             bad.append(f"{what}: failed without saying {says!r}\n{out}")
         if mrc != 0:
             bad.append(f"{what}: still fails without the line that catches it\n{mout}")
+    # A stalled connection must end inside the attempt: every curl carries both timeouts, and a hanging server
+    # makes the step report what is missing instead of running until the job times out.
+    for n, says in ((STORED, "is not anonymously downloadable"), (SERVED, "still lacks: alpha=1.2.3 beta=4.5.6")):
+        rc, out, log = run(steps[n], {"HANG": "1"}, CHARTS, timeout=60)
+        ran += 1
+        calls = [l for l in log.splitlines() if l.startswith("curl ")]
+        ok = rc == 1 and says in out and calls and all("connect-timeout=10 " in l and "max-time=30" in l for l in calls)
+        print(f"  {'ok  ' if ok else 'FAIL'} a stalled connection ends within the timeout: {n}")
+        if not ok:
+            bad.append(f"{n}: stalled connection: exit {rc}, curls {calls}\n{out}")
+        # Without --max-time the stand-in never answers; the run is cut off by the harness instead of finishing.
+        try:
+            mrc, _, _ = run(steps[n].replace("--max-time 30", ""), {"HANG": "1"}, CHARTS, timeout=10)
+            bad.append(f"{n}: without --max-time the stalled connection still ended (exit {mrc})")
+        except subprocess.TimeoutExpired:
+            pass
+        ran += 1
     # The pull drops the job's token: without that, the stand-in helm sees it and refuses.
     old = "env -u GH_TOKEN helm pull"
     if steps[SERVED].count(old) != 1:
