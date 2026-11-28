@@ -101,14 +101,21 @@ placeholder substitutes it globally**: a substitution anchored to `version:` sil
 as the literal placeholder, and helm accepts that without a word. Charts whose version is a served API
 version (rule 4's second shape) keep literal versions; they belong to blueprint repositories.
 
-**R5. A release is the shared one. *Advisory until krateo-platformops/.github's `release-oci` 2.1.0*,
-the first version every index channel can adopt. R5 becomes a failure in the charts release that follows
-release-oci 2.1.0, announced to every repository's owner first; until then the check warns, and a
-repository keeps its own release, so that it migrates once.** On a `X.Y.Z` tag the repository calls
+**R5. A release is the shared one. *Enforced from charts 1.15.0*: a repository that does not meet R5
+fails the check; it was advisory before. The migration steps and the state of each repository are in
+issue #66, and a repository that has not migrated stays at the checker it is pinned to until it moves
+the pin.** On a `X.Y.Z` tag the repository calls
 krateo-platformops/.github's `release-oci.yaml` with an explicit `index_channel`, and nothing else for the
 release: release-oci itself runs PUBLISHING.md's `release-preflight.yaml` (rule 12) before any push and,
 for a channel, `publish-chart.yaml` (rule 1) after it. A repository that also calls `publish-chart.yaml`
-or `release-preflight.yaml` beside release-oci runs them twice. There is no repository-specific
+or `release-preflight.yaml` beside release-oci runs them twice. The check is therefore a rule about the
+whole repository: a repository that releases through release-oci must not reference `publish-chart.yaml`,
+`release-preflight.yaml` or the `chart-push` action with `uses:` in any workflow, a test harness
+included. Reading the files (fetching `release-preflight.yaml` with `gh api` to compare it, say) is not
+a call and is not caught. R5 applies only to a repository that ships a chart (a `Chart.yaml` outside test,
+example and fixture directories); a repository with none has no R5 finding. `index_channel` and, on a
+dispatchable caller, `chart_version` must be given a value on their own line under `with:`; defining a
+`chart_version` input, or naming either key in a comment, is not passing it. These conditions are checked per workflow file, not per job, so "the caller grants `packages: write`" means the calling file contains it; put the permission on the job that calls release-oci. A repository with no discovered chart but a `release-tag.yaml` gets an advisory, because its chart may sit in a directory discovery skips. There is no repository-specific
 `release-tag.yaml`: a fix to the shared release reaches every repository at once, and only if no
 repository has its own.
 

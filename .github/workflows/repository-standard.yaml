@@ -161,27 +161,32 @@ jobs:
           # [rule:R5]
           # R5 release: on a X.Y.Z tag, the shared release-oci with an explicit index_channel, which runs
           # release-preflight and publish-chart itself; no repository-specific release-tag workflow.
-          # Advisory until release-oci 2.1.0, the first version every index channel can adopt.
-          RO = "krateo-platformops/.github/.github/workflows/release-oci.yaml"
-          if not calls(RO):
-              warn("R5", f"no workflow calls {RO}")
-          else:
-              callers = [fn for fn, t in workflows.items()
-                         if re.search(rf"^\s*-?\s*uses:\s*['\"]?{re.escape(RO)}@", t, re.M)]
-              for fn in callers:
-                  if not re.search(r"^\s*index_channel:\s*\S", workflows[fn], re.M):
-                      warn("R5", f".github/workflows/{fn} calls release-oci without index_channel (2.0.0 and later require it)")
-                  if not re.search(r"^\s*packages:\s*write\b", workflows[fn], re.M):
-                      warn("R5", f".github/workflows/{fn} calls release-oci without granting packages: write; the run would end at startup")
-                  if re.search(r"^\s*workflow_dispatch\s*:", workflows[fn], re.M) and not re.search(r"^\s*chart_version:\s*\S", workflows[fn], re.M):
-                      warn("R5", f".github/workflows/{fn} can be dispatched but passes no chart_version; a dispatch has a branch as its ref, so its release is refused")
-              for path in ("krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
-                           "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
-                           "krateo-platformops/.github/.github/actions/chart-push"):
-                  if calls(path):
-                      warn("R5", f"a workflow calls {path} beside release-oci, which already runs it; remove the call")
-          if "release-tag.yaml" in workflows:
-              warn("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
+          # A failure from charts 1.15.0 (issue #66); advisory before.
+          # Only a repository that ships a chart (charts, above, leaves out test and example fixtures) has a
+          # release to check.
+          if charts:
+              RO = "krateo-platformops/.github/.github/workflows/release-oci.yaml"
+              if not calls(RO):
+                  fail("R5", f"no workflow calls {RO}")
+              else:
+                  callers = [fn for fn, t in workflows.items()
+                             if re.search(rf"^\s*-?\s*uses:\s*['\"]?{re.escape(RO)}@", t, re.M)]
+                  for fn in callers:
+                      if not re.search(r"^\s*index_channel:[ \t]*\S", workflows[fn], re.M):
+                          fail("R5", f".github/workflows/{fn} calls release-oci without index_channel (2.0.0 and later require it)")
+                      if not re.search(r"^\s*packages:\s*write\b", workflows[fn], re.M):
+                          fail("R5", f".github/workflows/{fn} calls release-oci without granting packages: write; the run would end at startup")
+                      if re.search(r"^\s*workflow_dispatch\s*:", workflows[fn], re.M) and not re.search(r"^\s*chart_version:[ \t]*\S", workflows[fn], re.M):
+                          fail("R5", f".github/workflows/{fn} can be dispatched but passes no chart_version; a dispatch has a branch as its ref, so its release is refused")
+                  for path in ("krateo-blueprints/charts/.github/workflows/publish-chart.yaml",
+                               "krateo-blueprints/charts/.github/workflows/release-preflight.yaml",
+                               "krateo-platformops/.github/.github/actions/chart-push"):
+                      if calls(path):
+                          fail("R5", f"a workflow calls {path} beside release-oci, which already runs it; remove the call")
+              if "release-tag.yaml" in workflows:
+                  fail("R5", ".github/workflows/release-tag.yaml: a repository-specific release; use the shared release-oci")
+          elif "release-tag.yaml" in workflows:
+              warn("R5", "no chart was discovered, but .github/workflows/release-tag.yaml exists. If this repository ships a chart, it sits in a directory chart discovery skips (test, e2e, examples, samples, fixtures), and R5 was not checked.")
           # [/rule:R5]
 
           # [rule:R6]

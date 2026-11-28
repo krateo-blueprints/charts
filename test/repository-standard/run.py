@@ -5,7 +5,7 @@ Runs the workflow's OWN check (the `python3 -I - <<'PY'` heredoc, extracted from
 generated repository trees:
   - a repository that conforms passes;
   - each case breaks exactly one rule and must fail with that rule's id, and only that one; a case for an
-    advisory rule (REPOSITORY.md: R5, R8's reference check, R9) must pass and warn with that rule's id;
+    advisory rule (REPOSITORY.md: R8's reference check, R9) must pass and warn with that rule's id;
   - a Chart.yaml under a test fixture or a vendored subchart (chart/charts/<x>/) is not a chart of the
     repository, so it must not trip R2; a top-level charts/<name>/ IS one, in the wrong place, and must;
   - R9 reads a response file (REPO_API) the cases write: an absent security_and_analysis field is one
@@ -147,6 +147,12 @@ CASES = [
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"], "    with:\n      index_channel: none\n"))),
     ("R5 dispatchable release-oci caller without chart_version", "R5", NAME, lambda r: write(
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH).replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n"))),
+    ("R5 dispatch defines the chart_version input but never passes it", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH).replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n    inputs:\n      chart_version:\n        description: version\n        required: false\n"))),
+    ("R5 chart_version only in a comment", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH + "    # chart_version: ${{ inputs.chart_version }}\n").replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n"))),
+    ("R5 index_channel key with no value on its line", "R5", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], "    permissions:\n      packages: write\n    with:\n      index_channel:\n        none\n"))),
     ("R5 publish-chart called beside release-oci", "R5", NAME, lambda r: write(
         r, ".github/workflows/index.yaml", workflow(["krateo-blueprints/charts/.github/workflows/publish-chart.yaml"]))),
     ("R5 release-preflight called beside release-oci", "R5", NAME, lambda r: write(
@@ -168,10 +174,7 @@ CASES = [
 ]
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
-ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 dispatchable release-oci caller without chart_version", "R5 publish-chart called beside release-oci",
-            "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
-            "R5 a repository-specific release-tag.yaml",
-            "R8 no preflight-refs workflow",
+ADVISORY = {"R8 no preflight-refs workflow",
             "R9 publishing repository with secret scanning disabled", "R9 publishing repository with push protection disabled"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
@@ -183,11 +186,31 @@ PASSES = [
         write(r, "chart/compositiondefinition.yaml", "kind: CompositionDefinition\n"))),
     ("a dispatchable release-oci caller that passes chart_version", NAME, lambda r: write(
         r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH + "      chart_version: ${{ inputs.chart_version || '' }}\n").replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n"))),
+    ("a dispatch that defines the chart_version input and passes it under with:", NAME, lambda r: write(
+        r, ".github/workflows/release-oci.yaml", workflow(USES["release"], RELEASE_WITH + "      chart_version: ${{ inputs.chart_version || '' }}\n").replace("on:\n  push:\n", "on:\n  push:\n  workflow_dispatch:\n    inputs:\n      chart_version:\n        description: version\n        required: false\n"))),
     ("a test fixture's Chart.yaml is not a chart", NAME, lambda r: write(r, "test/fixtures/x/Chart.yaml", chart("x"))),
     ("a vendored subchart is not a chart", NAME, lambda r: write(r, "chart/charts/dep/Chart.yaml", chart("dep"))),
     ("a vendored subchart of the config chart is not a chart", NAME, lambda r: write(r, "config-chart/charts/dep/Chart.yaml", chart("dep"))),
 ]
 
+# R5 applies to a repository that ships a chart: with none, it makes no finding at all (other rules may).
+NO_R5 = [
+    ("no Chart.yaml and no release workflow", NAME, lambda r: (
+        rm(r, "chart"), rm(r, "config-chart"), rm(r, ".github/workflows/release-oci.yaml"))),
+    ("the only Chart.yaml is in a test fixture directory", NAME, lambda r: (
+        rm(r, "chart"), rm(r, "config-chart"), rm(r, ".github/workflows/release-oci.yaml"),
+        write(r, "test/fixtures/x/Chart.yaml", chart("x")))),
+]
+
+# No discovered chart but a release-tag.yaml: R5 is skipped, so it only warns (R2 fails on its own for want of a
+# chart, which is not R5's doing). Without a release-tag.yaml, NO_R5 above holds: nothing at all.
+WARN_R5 = [
+    ("the only Chart.yaml is under examples/, and a release-tag.yaml exists", NAME, lambda r: (
+        rm(r, "chart"), rm(r, "config-chart"), rm(r, ".github/workflows/release-oci.yaml"),
+        write(r, "examples/x/Chart.yaml", chart("x")), write(r, ".github/workflows/release-tag.yaml", "on:\n  push:\n"))),
+    ("no chart at all, and a release-tag.yaml exists", NAME, lambda r: (
+        rm(r, "chart"), rm(r, "config-chart"), write(r, ".github/workflows/release-tag.yaml", "on:\n  push:\n"))),
+]
 
 NOTICE = "::notice::R9 can't be read"
 # (case, repository name, mutation, notices expected): R9 is unread, never passed, when the field is
@@ -225,6 +248,12 @@ def rules_in(out):
     return sorted(set(re.findall(r"^\s+(R\d+):(?!.*\(advisory\)$)", out, re.M)))
 
 
+def clean_but_r5(rc, out):
+    # R5 is a failure, and some R9 cases drop release-oci to make a repository that does not publish, so
+    # R5 may be the one and only failure there; anything else is a deviation these cases do not expect.
+    return rules_in(out) in ([], ["R5"]) and rc == (1 if rules_in(out) else 0)
+
+
 def warned_in(out):
     return sorted(set(re.findall(r"^\s+(R\d+):.*\(advisory\)$", out, re.M)))
 
@@ -250,10 +279,22 @@ def main():
             print(f"{'ok  ' if ok else 'FAIL'} refuses: {label} -> {got}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
+    for label, name, mutate in NO_R5:
+        rc, out = run(check, name, mutate)
+        ok = "R5" not in rules_in(out) + warned_in(out) and "rule R5" not in out
+        print(f"{'ok  ' if ok else 'FAIL'} no R5:   {label} -> {rules_in(out)}")
+        if not ok:
+            bad.append(label); print(textwrap.indent(out, "      "))
+    for label, name, mutate in WARN_R5:
+        rc, out = run(check, name, mutate)
+        ok = "R5" not in rules_in(out) and "R5" in warned_in(out)
+        print(f"{'ok  ' if ok else 'FAIL'} warns R5: {label} -> failures {rules_in(out)}, warnings {warned_in(out)}")
+        if not ok:
+            bad.append(label); print(textwrap.indent(out, "      "))
     for label, name, mutate, want in R9_NOTICES:
         rc, out = run(check, name, mutate)
         got = out.count(NOTICE)
-        ok = rc == 0 and got == want and "R9" not in warned_in(out) + rules_in(out)
+        ok = clean_but_r5(rc, out) and got == want and "R9" not in warned_in(out) + rules_in(out)
         print(f"{'ok  ' if ok else 'FAIL'} notices: {label} -> {got}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
@@ -273,17 +314,23 @@ def main():
             print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' passes silently")
             if not ok:
                 bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
+        for label, name, mutate in WARN_R5 if rule == "R5" else []:
+            rc, out = run(cut, name, mutate)
+            ok = "R5" not in warned_in(out) + rules_in(out)
+            print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' does not warn")
+            if not ok:
+                bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
         for label, name, mutate, want in R9_NOTICES if rule == "R9" else []:
             if want:
                 rc, out = run(cut, name, mutate)
-                ok = rc == 0 and NOTICE not in out
+                ok = clean_but_r5(rc, out) and NOTICE not in out
                 print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' prints no notice")
                 if not ok:
                     bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
     if bad:
         print(f"\n{len(bad)} expectation(s) failed")
         sys.exit(1)
-    print(f"\nall {len(PASSES) + len(CASES) + len(R9_NOTICES)} cases and {len(blocks)} rule deletions hold")
+    print(f"\nall {len(PASSES) + len(CASES) + len(NO_R5) + len(WARN_R5) + len(R9_NOTICES)} cases and {len(blocks)} rule deletions hold")
 
 
 if __name__ == "__main__":
