@@ -5,7 +5,7 @@ Runs the workflow's OWN check (the `python3 -I - <<'PY'` heredoc, extracted from
 generated repository trees:
   - a repository that conforms passes;
   - each case breaks exactly one rule and must fail with that rule's id, and only that one; a case for an
-    advisory rule (REPOSITORY.md: R5, R8's reference check, R9) must pass and warn with that rule's id;
+    advisory rule (REPOSITORY.md: R8's reference check, R9) must pass and warn with that rule's id;
   - a Chart.yaml under a test fixture or a vendored subchart (chart/charts/<x>/) is not a chart of the
     repository, so it must not trip R2; a top-level charts/<name>/ IS one, in the wrong place, and must;
   - R9 reads a response file (REPO_API) the cases write: an absent security_and_analysis field is one
@@ -168,10 +168,7 @@ CASES = [
 ]
 
 # Advisory rules (REPOSITORY.md): the case must still PASS (exit 0) and print a warning for its rule.
-ADVISORY = {"R5 no shared release-oci", "R5 release-oci without index_channel", "R5 release-oci caller without packages: write", "R5 dispatchable release-oci caller without chart_version", "R5 publish-chart called beside release-oci",
-            "R5 release-preflight called beside release-oci", "R5 chart-push used beside release-oci",
-            "R5 a repository-specific release-tag.yaml",
-            "R8 no preflight-refs workflow",
+ADVISORY = {"R8 no preflight-refs workflow",
             "R9 publishing repository with secret scanning disabled", "R9 publishing repository with push protection disabled"}
 
 # Must pass: Chart.yaml files that are not charts of the repository.
@@ -225,6 +222,12 @@ def rules_in(out):
     return sorted(set(re.findall(r"^\s+(R\d+):(?!.*\(advisory\)$)", out, re.M)))
 
 
+def clean_but_r5(rc, out):
+    # R5 is a failure, and some R9 cases drop release-oci to make a repository that does not publish, so
+    # R5 may be the one and only failure there; anything else is a deviation these cases do not expect.
+    return rules_in(out) in ([], ["R5"]) and rc == (1 if rules_in(out) else 0)
+
+
 def warned_in(out):
     return sorted(set(re.findall(r"^\s+(R\d+):.*\(advisory\)$", out, re.M)))
 
@@ -253,7 +256,7 @@ def main():
     for label, name, mutate, want in R9_NOTICES:
         rc, out = run(check, name, mutate)
         got = out.count(NOTICE)
-        ok = rc == 0 and got == want and "R9" not in warned_in(out) + rules_in(out)
+        ok = clean_but_r5(rc, out) and got == want and "R9" not in warned_in(out) + rules_in(out)
         print(f"{'ok  ' if ok else 'FAIL'} notices: {label} -> {got}")
         if not ok:
             bad.append(label); print(textwrap.indent(out, "      "))
@@ -276,7 +279,7 @@ def main():
         for label, name, mutate, want in R9_NOTICES if rule == "R9" else []:
             if want:
                 rc, out = run(cut, name, mutate)
-                ok = rc == 0 and NOTICE not in out
+                ok = clean_but_r5(rc, out) and NOTICE not in out
                 print(f"{'ok  ' if ok else 'FAIL'} without block {rule}, '{label}' prints no notice")
                 if not ok:
                     bad.append(f"without {rule}: {label}"); print(textwrap.indent(out, "      "))
