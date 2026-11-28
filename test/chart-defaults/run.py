@@ -15,7 +15,7 @@ CHART_YAML = "apiVersion: v2\nname: acme\nversion: CHART_VERSION\nappVersion: CH
 
 def extract():
     text = open(WF).read()
-    m = re.search(r"-I - \"\$CHART_DIR\" <<'PY'\n(.*?)\n\s*PY\n", text, re.S)
+    m = re.search(r"-I - \"\$CHART_DIR\" \"\$ENFORCE\" <<'PY'\n(.*?)\n\s*PY\n", text, re.S)
     if not m:
         sys.exit("could not find the check heredoc in chart-defaults.yaml")
     return textwrap.dedent(m.group(1))
@@ -122,7 +122,7 @@ CASES = {
     "one chart without a schema among good ones": (
         lambda root: (chart(root, "chart", prop(a=leaf(1)), "a: 1\n"),
                       chart(root, "config-chart", None, "a: 1\n", with_schema=False)),
-        False, ["config-chart: error: no values.schema.json"]),
+        False, ["config-chart: no values.schema.json"]),
     "a directory with no chart at all": (lambda root: open(os.path.join(root, "README.md"), "w").write("x\n"),
                                          False, ["no chart"]),
     "an empty directory": (lambda root: None, False, ["no chart"]),
@@ -144,6 +144,28 @@ CASES = {
         True, ["not compared: q: $ref"]),
 }
 
+# Warn-only (enforce false): findings are ::warning:: and the step passes; an empty input still fails.
+# Keys are (name, "warn"); the value is built like the others.
+NOVA = prop(restdefinitions=prop(quota=prop(enabled=leaf(False, "boolean"))))
+NOVA_VALUES = "restdefinitions:\n  quota:\n    enabled: true\n"
+WARN = {
+    "warn: the nova shape passes with a warning": (
+        one(NOVA, NOVA_VALUES), True,
+        ["::warning file=", "values.schema.json,title=chart-defaults::", "enabled: schema default false != values.yaml true",
+         "findings reported as warnings"]),
+    "warn: a missing key passes with a warning": (
+        one(prop(a=leaf(1)), "b: 2\n"), True, ["::warning file=", "a: schema default 1, values.yaml has no key"]),
+    "warn: a chart with no schema passes with a warning": (
+        lambda root: chart(root, "chart", None, "a: 1\n", with_schema=False), True,
+        ["::warning file=", "no values.schema.json"]),
+    "warn: an aligned chart is silent": (one(prop(a=leaf(1)), "a: 1\n"), True, ["1 OK"]),
+    "warn: a directory with no chart still fails": (lambda root: None, False, ["::error title=chart-defaults::no chart"]),
+    "warn: a directory that does not exist still fails": (lambda root: shutil.rmtree(root), False, ["not a directory"]),
+    "warn: an unreadable values.yaml still fails": (one(prop(a=leaf(1)), "a: b: c\n"), False, ["::error file=", "cannot read"]),
+}
+ENFORCED_ANNOTATION = ("enforce: the nova shape is an ::error::", one(NOVA, NOVA_VALUES), False,
+                       ["::error file=", "values.schema.json,title=chart-defaults::"])
+
 # The same two as committed fixtures, so a reader can open what the gate is shown.
 FIXTURES = os.path.join(HERE, "fixtures")
 CASES["committed fixture: aligned"] = (lambda root: shutil.copytree(os.path.join(FIXTURES, "aligned"), root, dirs_exist_ok=True),
@@ -154,17 +176,18 @@ CASES["committed fixture: nova-operator-kog 0.1.10"] = (
 
 # rule block -> cases that must flip to the opposite verdict once the block is replaced by `pass`.
 MUTANTS = {
+    "warn-only": ["warn: the nova shape", "warn: a missing key", "warn: a chart with no schema"],
     "strict-bool": ["bool is not an integer"],
     "ref": ["$ref mismatch", "aligned through a $ref"],
     "missing-key": ["missing values key", "parent missing in values", "missing values.yaml"],
 }
 
 
-def run(script, case_builder):
+def run(script, case_builder, mode="true"):
     root = tempfile.mkdtemp(prefix="chart-defaults-")
     try:
         case_builder(root)
-        p = subprocess.run([sys.executable, "-I", script, root], capture_output=True, text=True,
+        p = subprocess.run([sys.executable, "-I", script, root, mode], capture_output=True, text=True,
                            env=dict(os.environ, PYTHONDONTWRITEBYTECODE="1"))
         return p.returncode, p.stdout + p.stderr
     finally:
@@ -185,8 +208,9 @@ def main():
     script = os.path.join(tmp, "check.py")
     open(script, "w").write(src)
     bad = []
-    for name, (builder, passes, needles) in CASES.items():
-        rc, out = run(script, builder)
+    CASES[ENFORCED_ANNOTATION[0]] = ENFORCED_ANNOTATION[1:]
+    for name, (builder, passes, needles) in list(CASES.items()) + [(n, v) for n, v in WARN.items()]:
+        rc, out = run(script, builder, "false" if name in WARN else "true")
         verdict = (rc == 0) == passes
         if passes and rc not in (0,):
             verdict = False
@@ -195,7 +219,7 @@ def main():
         miss = [n for n in needles if n not in out]
         if not verdict or miss:
             bad.append(f"{name}: exit {rc}, wanted {'0' if passes else 'non-zero'}, missing {miss}\n{out}")
-    print(f"{len(CASES)} cases, {len(bad)} wrong")
+    print(f"{len(CASES) + len(WARN)} cases, {len(bad)} wrong")
     allblocks = set(re.findall(r"# \[rule:([a-z-]+)\]", src))
     if allblocks != set(MUTANTS):
         bad.append(f"rule blocks in the workflow {sorted(allblocks)} differ from those tested {sorted(MUTANTS)}")
@@ -203,12 +227,12 @@ def main():
         mscript = os.path.join(tmp, f"mut-{block}.py")
         open(mscript, "w").write(mutate(src, block))
         for fragment in flips:
-            names = [n for n in CASES if fragment in n]
+            names = [n for n in list(CASES) + list(WARN) if fragment in n]
             if not names:
                 bad.append(f"mutant {block}: no case named like {fragment!r}")
             for n in names:
-                builder, passes, needles = CASES[n]
-                rc, out = run(mscript, builder)
+                builder, passes, needles = WARN[n] if n in WARN else CASES[n]
+                rc, out = run(mscript, builder, "false" if n in WARN else "true")
                 # Flipped: the verdict changed, or the output no longer says what the case requires
                 # (a pass that compares nothing is not the same pass).
                 same = (rc == 0) == passes and all(x in out for x in needles)

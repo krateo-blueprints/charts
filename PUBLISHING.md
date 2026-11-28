@@ -584,9 +584,17 @@ No release reported any of this.
       are errors, not skips. A chart that is not installed as a Composition does not call the check on
       itself.
     - **Calling it:** `chart-defaults.yaml`, pinned like any reusable (rule 9), with
-      `working-directory` set to a chart or to a tree of charts. It reads files only. Self-tested by
-      `test-chart-defaults.yaml` with must-pass and must-fail charts, the nova 0.1.10 shape among them,
-      and by replacing each rule block in turn.
+      `working-directory` set to a chart or to a tree of charts. It reads files only; PyYAML is
+      installed with `pip install --require-hashes`, so the download is pinned like the workflow.
+    - **Rolling it out:** `enforce` (default `true`) fails the job on drift. `enforce: false`
+      reports drift, and a chart with no `values.schema.json`, as `::warning::` annotations on the
+      schema file and passes, for a repository that has drift today. GitHub does not allow
+      `continue-on-error` on a job that calls a reusable, so the mode is an input. A directory with
+      no chart still fails in both modes, because an empty input never passes. A repository calls it
+      warn-only while it has drift, fixes the paths, and then drops `enforce: false`.
+    - **Tests:** `test-chart-defaults.yaml` with must-pass and must-fail charts, the nova 0.1.10
+      shape among them, the warn-only cases, two real `uses:` calls (enforcing on an aligned chart,
+      warn-only on the nova shape), and each rule block replaced in turn.
 
 ## Scope
 

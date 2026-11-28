@@ -9,6 +9,7 @@ name: chart-defaults
 #       uses: krateo-blueprints/charts/.github/workflows/chart-defaults.yaml@<full SHA> # X.Y.Z
 #       with:
 #         working-directory: chart        # a chart, or a tree holding charts; defaults to the repository root
+#         enforce: false                  # warn-only while the repository has drift; omit (true) once it is fixed
 #
 # core-provider generates a chart's CRD from values.schema.json, so a Composition gets the schema's
 # `default`. `helm install` never applies a schema default; it uses values.yaml. When the two disagree at
@@ -24,7 +25,14 @@ name: chart-defaults
 # additionalProperties, patternProperties, if, then, else and not are listed as "not compared", never
 # guessed at and never failed.
 # A tree with no chart, a chart with no values.schema.json, and an unreadable file are errors: a check that
-# read nothing has checked nothing. Reads files only: no network, no token, no write.
+# read nothing has checked nothing. Reads files only: no network, no token, no write (PyYAML is installed from
+# PyPI with --require-hashes, the sha256 of 6.0.2's sdist and its manylinux x86_64 wheels for CPython 3.8 to 3.13).
+#
+# `enforce: false` is the rollout switch. GitHub does not allow `continue-on-error` on a job that calls a reusable
+# workflow, so the mode lives here: drift (a mismatch, a missing key) and a chart with no values.schema.json are
+# `::warning::` annotations on values.schema.json and the step passes; with `enforce: true` (the default) they
+# are `::error::` and it fails. A directory with no chart, one that does not exist, and a file that cannot be
+# read fail in both modes: an empty input never passes.
 #
 # Why a reusable and not a step of repository-standard.yaml: that one reads a caller's layout (REPOSITORY.md,
 # provider and operator repositories only). This rule applies to every chart a Composition installs, in a
@@ -41,6 +49,14 @@ on:
         type: string
         required: false
         default: "."
+      enforce:
+        description: >-
+          true fails the job on drift or a chart with no values.schema.json. false reports them as warnings
+          and passes (a rollout step for a repository that has drift today). A directory with no chart
+          fails either way.
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -55,19 +71,39 @@ jobs:
       - name: Check that schema defaults match values.yaml
         env:
           CHART_DIR: ${{ inputs.working-directory }}
+          ENFORCE: ${{ inputs.enforce }}
         run: |
           set -euo pipefail
           python3 -m venv /tmp/venv
-          /tmp/venv/bin/pip install --quiet "pyyaml==6.0.2"
-          /tmp/venv/bin/python -I - "$CHART_DIR" <<'PY'
+          cat > /tmp/requirements.txt <<'REQ'
+          pyyaml==6.0.2 \
+            --hash=sha256:ec031d5d2feb36d1d1a24380e4db6d43695f3748343d99434e6f5f9156aaa2ed \
+            --hash=sha256:3ad2a3decf9aaba3d29c8f537ac4b243e36bef957511b4766cb0057d32b0be85 \
+            --hash=sha256:80bab7bfc629882493af4aa31a4cfa43a4c57c83813253626916b8c7ada83476 \
+            --hash=sha256:70b189594dbe54f75ab3a1acec5f1e3faa7e8cf2f1e08d9b561cb41b845f69d5 \
+            --hash=sha256:9056c1ecd25795207ad294bcf39f2db3d845767be0ea6e6a34d856f006006083 \
+            --hash=sha256:3b1fdb9dc17f5a7677423d508ab4f243a726dea51fa5e70992e59a7411c89d19 \
+            --hash=sha256:d584d9ec91ad65861cc08d42e834324ef890a082e591037abe114850ff7bbc3e
+          REQ
+          /tmp/venv/bin/pip install --quiet --require-hashes -r /tmp/requirements.txt
+          /tmp/venv/bin/python -I - "$CHART_DIR" "$ENFORCE" <<'PY'
           import json, os, sys, urllib.parse
           import yaml
 
           ROOT = sys.argv[1] if len(sys.argv) > 1 else "."
+          ENFORCE = (sys.argv[2] if len(sys.argv) > 2 else "true") != "false"
+          # A finding is an error when enforcing and a warning when not; an empty input is always an error.
+          LEVEL = "error" if ENFORCE else "warning"
           MISSING = object()
           FIXTURE_DIRS = {"test", "tests", "testdata", "fixtures", "e2e", "example", "examples", "sample", "samples"}
           # Keywords whose subschemas are not compared: which element, branch or key they describe is not decided here.
           OTHER = ("items", "oneOf", "anyOf", "allOf", "additionalProperties", "patternProperties", "if", "then", "else", "not")
+
+
+          def annotate(level, path, msg):
+              msg = msg.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              where = f" file={os.path.normpath(path)}," if path else " "
+              print(f"::{level}{where}title=chart-defaults::{msg}")
 
 
           def js(v):
@@ -198,20 +234,21 @@ jobs:
 
           def main():
               if not os.path.isdir(ROOT):
-                  print(f"error: {ROOT} is not a directory")
+                  annotate("error", None, f"{ROOT} is not a directory")
                   return 2
               charts = find_charts(ROOT)
               if not charts:
-                  print(f"error: no chart (Chart.yaml) under {ROOT}; a check that read nothing has checked nothing")
+                  annotate("error", None, f"no chart (Chart.yaml) under {ROOT}; a check that read nothing has checked nothing")
                   return 2
               bad = False
+              hard = False  # a file that cannot be read is an error whether or not findings are enforced
               totals = [0, 0, 0]
               for c in charts:
                   name = os.path.relpath(c, ROOT)
                   sp = os.path.join(c, "values.schema.json")
                   vp = os.path.join(c, "values.yaml")
                   if not os.path.isfile(sp):
-                      print(f"{name}: error: no values.schema.json (core-provider generates the CRD from it)")
+                      annotate(LEVEL, sp, f"{name}: no values.schema.json (core-provider generates the CRD from it)")
                       bad = True
                       continue
                   try:
@@ -224,17 +261,17 @@ jobs:
                           if values is None:
                               values = {}
                   except (OSError, ValueError, yaml.YAMLError) as e:
-                      print(f"{name}: error: cannot read the chart's values: {e}")
-                      bad = True
+                      annotate("error", sp, f"{name}: cannot read the chart's values: {e}")
+                      hard = True
                       continue
                   if not isinstance(schema, dict):
-                      print(f"{name}: error: values.schema.json is not an object")
-                      bad = True
+                      annotate("error", sp, f"{name}: values.schema.json is not an object")
+                      hard = True
                       continue
                   chk = Check(schema)
                   chk.walk(schema, "", values)
                   for e in chk.errors:
-                      print(f"{name}: {e}")
+                      annotate(LEVEL, sp, f"{name}: {e}")
                   for n in chk.notes:
                       print(f"{name}: not compared: {n}")
                   print(f"{name}: {chk.compared} compared, {len(chk.notes)} not compared, {chk.ok} OK, {len(chk.errors)} failing")
@@ -244,8 +281,14 @@ jobs:
                   totals[1] += len(chk.notes)
                   totals[2] += chk.ok
               print(f"{len(charts)} chart(s): {totals[0]} compared, {totals[1]} not compared, {totals[2]} OK"
-                    + (": FAILED" if bad else ": schema defaults match values.yaml"))
-              return 1 if bad else 0
+                    + ((": FAILED" if ENFORCE else ": findings reported as warnings (enforce is false)") if bad or hard
+                       else ": schema defaults match values.yaml"))
+              failed = bad
+              # [rule:warn-only]
+              if not ENFORCE:
+                  failed = False
+              # [/rule:warn-only]
+              return 1 if failed or hard else 0
 
 
           sys.exit(main())
